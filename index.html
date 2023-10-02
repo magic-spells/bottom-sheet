@@ -1,0 +1,267 @@
+<html>
+<head>
+
+  <meta name="viewport" 
+  content="width=device-width, initial-scale=1, user-scalable=no">
+
+  <title>bottom sheet panel test</title>
+
+    <style>
+
+      
+body {
+  padding: 0px;
+  margin: 0px;
+  box-sizing: border-box;
+}
+
+
+.slide-up-panel{
+  background: white; 
+  box-sizing: border-box;
+  border-top-left-radius: 25px;
+  border-top-right-radius: 25px;
+  position: fixed;
+  width: 100%;
+  top: 20vh;
+  left: 0px;
+  padding: 16px;
+  overflow: hidden;
+  box-shadow: 0px 1px 20px -4px rgba(0,0,0,0.3),  0px 0px 7px 0px rgba(0,0,0,0.1);
+  will-change: transform;
+  height: 85vh;
+}
+
+.slide-up-panel.transition-fast {
+  transition: transform 300ms ease;
+}
+
+
+.slide-up-background {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 100vw;
+  height: 100%;
+  background: rgba(0,0,0,0.5)
+}
+
+.slide-up-panel-content {
+  height: 100%;
+  max-height: 100%;
+  overflow-y: scroll;
+  
+}
+
+.touch-action-none {
+  touch-action: none;
+}
+
+
+.internal-list {
+  list-style-type: none;
+  margin: 0px;
+  padding: 0px;
+  padding-bottom: 50px;
+}
+
+.internal-list li {
+  margin: 16px;
+  padding: 16px;
+  background: lightblue;
+  height: 200px
+}
+    </style>
+
+</head>
+
+<body>
+
+
+
+  <div 
+  id="panel-1"
+  class="slide-up-component" >
+
+  <button class="slide-up-background" >
+  </button>
+
+  <div class="slide-up-panel" >
+    <div class="slide-up-panel-content" >
+      <ul class="internal-list" >
+        <li>
+            Item 1
+        </li>
+        <li>
+            Item 2
+        </li>
+        <li>
+            Item 3
+        </li>
+        <li>
+            Item 4
+        </li>
+        <li>
+            Item 5
+        </li>
+      </ul>
+    </div>
+  
+  </div>
+
+</div>
+
+<script>
+
+
+  
+
+let component = document.getElementById('panel-1')
+let panel = component.querySelector('.slide-up-panel')
+let panelContent = panel.querySelector('.slide-up-panel-content')
+let drag = {
+	isDragging: false,
+	startY: 0,
+  currentY: 0,
+  endY: 0,
+  velocity: 0,
+  delta: 0
+}
+
+/*
+const handleDragStart = (e) => {
+	console.log('handleDragStart')
+  e.preventDefault()
+  drag.isDragging = true
+  drag.startY = e.screenY;
+  drag.velocity = 0;
+}
+
+const handleDragMove = (e) => {
+  if (!drag.isDragging) return;
+  
+  drag.currentY = e.screenY;
+  drag.delta = drag.currentY - drag.startY;
+  if ( drag.delta < 0 ) drag.delta = 0;
+  
+  console.log('handleDragMove', drag.delta)
+  
+  panel.style.transform = `translate3d(0,${drag.delta}px,0)`
+}
+
+const handleDragEnd = (e) => {
+	console.log('handleDragEnd')
+  drag.isDragging = false
+}
+
+*/
+
+console.log('panelContent', panelContent)
+
+
+const panelDragStart = (e) => {
+	console.log('>  panelDragStart')
+
+  drag.startY = e.targetTouches[0].screenY;
+  drag.velocity = 0;
+  drag.direction = null
+ 
+  // only dragging if at top of scroll panel
+  if (panelContent.scrollTop == 0) {
+    drag.isDragging = true
+  }
+  
+}
+
+const panelDragMove = (e) => {
+	
+
+  if (!drag.isDragging) return;
+
+  drag.currentY = e.targetTouches[0].screenY;
+  drag.delta = drag.currentY - drag.startY;
+
+  if (!drag.direction){
+    
+    if (drag.delta < 0){
+      drag.direction = -1
+    }else{
+      drag.direction = 1
+    }
+    console.log('calculating direction', drag.direction)
+  }
+
+  // cancel if direction is up
+  if (drag.direction < 0) return;
+
+  drag.currentY = e.targetTouches[0].screenY;
+  drag.delta = drag.currentY - drag.startY;
+
+  // make sure we don't push it up
+  if (drag.delta < 0) {
+    panel.style.transform = `translate3d(0,0,0)`
+    return
+  }
+
+  // make sure we aren't scrolling
+  if (drag.delta > 0){
+    panelContent.scrollTop = 0
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation()
+  }
+
+  panel.style.transform = `translate3d(0,${ drag.delta }px,0)` 
+  return false
+}
+
+const panelDragEnd = (e) => {
+	console.log('>  panelDragEnd', drag.isDragging)
+  
+  if (drag.isDragging == true && drag.delta > 100 && drag.direction == 1){
+    closePanel()
+  }
+
+  // didn't meet drag threshold
+  if (drag.isDragging == true && drag.delta <= 100 && drag.direction == 1){
+    panel.classList.add('transition-fast')
+    panel.style.transform = `translate3d(0,0,0)` 
+    setTimeout(() => {
+      panel.classList.remove('transition-fast')
+    }, 300)
+  }
+
+  drag.isDragging = false
+  drag.delta = 0
+}
+
+const closePanel = () => {
+  console.log('close panel', drag.delta)
+  panel.classList.add('transition-fast')
+  panel.style.transform = `translate3d(0,100%,0)` 
+  
+
+  setTimeout(() => {
+    panel.style.transform = `translate3d(0,0,0)`
+    setTimeout(() => {
+      panel.classList.remove('transition-fast')
+    }, 300)
+  }, 2500)
+}
+
+
+
+panelContent.addEventListener('touchstart',     (e) => panelDragStart(e), false)
+panelContent.addEventListener('touchmove',     (e) => panelDragMove(e), false);
+panelContent.addEventListener('touchend',       (e) => panelDragEnd(e));
+panelContent.addEventListener('touchcancel',       (e) => panelDragEnd(e));
+
+/* panel.addEventListener('pointerdown',     (e) => handleDragStart(e))
+panel.addEventListener('pointermove',     (e) => handleDragMove(e));
+panel.addEventListener('pointerup',       (e) => handleDragEnd(e));
+ */
+
+
+</script>
+  
+</body>
+</html>
