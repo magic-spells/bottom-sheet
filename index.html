@@ -15,12 +15,9 @@ body {
   box-sizing: border-box;
 }
 
-
-
-/*.touch-action-none {
-  touch-action: none;
-}*/
-
+body * {
+  box-sizing: border-box;
+}
 
 .bottom-sheet-list {
   list-style-type: none;
@@ -177,10 +174,10 @@ class BottomSheet extends HTMLElement {
 
     drag.startY = e.targetTouches[0].screenY;
     drag.velocity = 0;
-    drag.direction = null
+    drag.direction = false
 
     _.panel.style.transition = ""
-   
+    
     // only dragging if at top of scroll panel
     if (_.panelContent.scrollTop == 0) {
       drag.isDragging = true
@@ -196,19 +193,17 @@ class BottomSheet extends HTMLElement {
     drag.currentY = e.targetTouches[0].screenY;
     drag.delta = drag.currentY - drag.startY;
 
+    // make sure we're dragging in the right direction (down)
     if (!drag.direction){
-      
+      // cancel if direction is up
       if (drag.delta < 0){
-        drag.direction = -1
-      }else{
-        drag.direction = 1
+        drag.isDragging = false
+        return
       }
-      // console.log('calculating direction', drag.direction)
+      drag.direction = true
     }
 
-    // cancel if direction is up
-    if (drag.direction < 0) return;
-
+    // calcualte drag delta
     drag.currentY = e.targetTouches[0].screenY;
     drag.delta = drag.currentY - drag.startY;
 
@@ -218,15 +213,17 @@ class BottomSheet extends HTMLElement {
       return
     }
 
-    // make sure we aren't scrolling
+    // make sure we aren't scrolling the content
     if (drag.delta > 0){
       _.panelContent.scrollTop = 0
+      // prevents scroll from happening on content
       if (e.cancelable) e.preventDefault();
       e.stopPropagation()
     }
 
+    // apply drag transformation
     _.panel.style.transform = `translate3d(0,${ drag.delta }px,0)` 
-    return false
+    // return false
   }
 
 
@@ -234,7 +231,7 @@ class BottomSheet extends HTMLElement {
     const _ = this;
     const drag = _.drag
 
-    if (!drag.isDragging || drag.direction != 1) return;
+    if (!drag.isDragging) return;
 
     drag.isDragging = false
     
