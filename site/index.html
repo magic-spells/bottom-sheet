@@ -15,12 +15,15 @@
         box-sizing: border-box;
       }
 
+      bottom-sheet-header {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 18px;
+      }
 
       .bottom-sheet-list {
         list-style-type: none;
         margin: 0px;
         padding: 0px;
-        padding-bottom: 50px;
         width: 100%;
       }
 
@@ -29,6 +32,24 @@
         padding: 16px;
         background: lightblue;
         height: 200px
+      }
+
+      .bottom-sheet-button-panel{
+        padding: 14px 20px;
+        display: flex;
+        gap: 16px;
+      }
+
+      .bottom-sheet-button-panel button{
+        flex: 1;
+        appearance: none;
+        font-family: Helvetica, Arial, sans-serif;
+        background: white;
+        font-size: 15px;
+        font-weight: 500;
+        border-radius: 5px;
+        padding: 8px;
+        letter-spacing: 0.05em
       }
          
     </style>
@@ -83,7 +104,12 @@
         <button 
           data-action="close-bottom-sheet" 
           class="" >
-          Close
+          Clear
+        </button>
+        <button 
+          data-action="close-bottom-sheet" 
+          class="" >
+          Apply
         </button>
       </div>
 

@@ -15,6 +15,7 @@ class BottomSheet extends HTMLElement {
     _.panel = _.querySelector(':scope > bottom-sheet-panel');
     _.panelContent = _.panel.querySelector(':scope > bottom-sheet-content');
     _.overlay = _.querySelector('bottom-sheet-overlay');
+    _.header = _.querySelector('bottom-sheet-header');
 
     // set default drag properties
     _.drag = {
@@ -35,6 +36,13 @@ class BottomSheet extends HTMLElement {
    */
   bindUI() {
     const _ = this;
+
+    _.header.addEventListener('touchstart', (e) => _.panelDragStart(e), false);
+    _.header.addEventListener('touchmove', (e) => _.panelDragMove(e), false);
+    _.header.addEventListener('touchend', (e) => _.panelDragEnd(e));
+    _.header.addEventListener('touchcancel', (e) => _.panelDragEnd(e));
+
+
     _.panelContent.addEventListener('touchstart', (e) => _.panelDragStart(e), false);
     _.panelContent.addEventListener('touchmove', (e) => _.panelDragMove(e), false);
     _.panelContent.addEventListener('touchend', (e) => _.panelDragEnd(e));
@@ -62,7 +70,9 @@ class BottomSheet extends HTMLElement {
     _.panel.style.transition = "";
 
     // only approve drag if at top of scroll panel
-    if (_.panelContent.scrollTop === 0) {
+    // or if we grabbed the header
+    if (_.panelContent.scrollTop === 0 ||
+        e.target.closest('bottom-sheet-header') != null) {
       drag.isDragging = true;
     }
   }
@@ -105,7 +115,6 @@ class BottomSheet extends HTMLElement {
 
     // make sure we aren't scrolling the content
     if (drag.delta > 0) {
-      _.panelContent.scrollTop = 0;
       // prevents scroll from happening on content
       if (e.cancelable) e.preventDefault();
       e.stopPropagation();
@@ -123,8 +132,10 @@ class BottomSheet extends HTMLElement {
     const _ = this;
     const drag = _.drag;
 
+    // exit if we didn't approve dragging
     if (!drag.isDragging) return;
 
+    // dragging is finished
     drag.isDragging = false;
 
     // met drag threshold - hide panel
