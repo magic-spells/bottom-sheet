@@ -85,6 +85,30 @@ class BottomSheet extends HTMLElement {
   }
 
   /**
+   * Toggles body scroll
+   * @param {boolean} disable - Whether to disable or enable body scroll
+   */
+  toggleBodyScroll(disable) {
+    const _ = this;
+    if (disable) {
+      // Store the current body scroll position
+      _.scrollPosition = window.pageYOffset;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${_.scrollPosition}px`;
+      document.body.style.width = '100%';
+    } else {
+      // Restore the body scroll
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('position');
+      document.body.style.removeProperty('top');
+      document.body.style.removeProperty('width');
+      window.scrollTo(0, _.scrollPosition);
+      _.scrollPosition = 0; // Reset scroll position
+    }
+  }
+
+  /**
    * Handles the start of a panel drag event
    * @param {TouchEvent} e - The touch event
    */
@@ -183,24 +207,6 @@ class BottomSheet extends HTMLElement {
     if (e.propertyName === 'transform') {
       // Clear transition property after the hide transition is done
       this.panel.classList.remove('transitioning');
-    }
-  }
-
-  toggleBodyScroll(disable) {
-    if (disable) {
-      // Store the current body scroll position
-      this.scrollPosition = window.pageYOffset;
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${this.scrollPosition}px`;
-      document.body.style.width = '100%';
-    } else {
-      // Restore the body scroll
-      document.body.style.removeProperty('overflow');
-      document.body.style.removeProperty('position');
-      document.body.style.removeProperty('top');
-      document.body.style.removeProperty('width');
-      window.scrollTo(0, this.scrollPosition);
     }
   }
 
