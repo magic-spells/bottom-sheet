@@ -1,0 +1,40 @@
+
+bottom-sheet-overlay {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 100vw;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  box-sizing: border-box;
+}
+
+bottom-sheet-panel {
+  background: white;
+  box-sizing: border-box;
+  border-top-left-radius: 25px;
+  border-top-right-radius: 25px;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  top: 20vh;
+  left: 0px;
+  overflow: hidden;
+  box-shadow: 0px 1px 20px -4px rgba(0,0,0,0.3), 0px 0px 7px 0px rgba(0,0,0,0.1);
+  will-change: transform;
+  height: 85vh;
+  box-sizing: border-box;
+}
+
+bottom-sheet-panel.transition-fast {
+  transition: transform 300ms ease;
+}
+
+bottom-sheet-content {
+  box-sizing: border-box;
+  width: 100%;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch; 
+  padding: 0px 20px;
+}

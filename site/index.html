@@ -1,0 +1,97 @@
+<html>
+<head>
+
+  <meta name="viewport" 
+  content="width=device-width, initial-scale=1, user-scalable=no">
+
+  <title>bottom sheet panel test</title>
+
+    <style>
+
+      
+      body {
+        padding: 0px;
+        margin: 0px;
+        box-sizing: border-box;
+      }
+
+
+      .bottom-sheet-list {
+        list-style-type: none;
+        margin: 0px;
+        padding: 0px;
+        padding-bottom: 50px;
+        width: 100%;
+      }
+
+      .bottom-sheet-list  li {
+        margin-bottom: 16px;
+        padding: 16px;
+        background: lightblue;
+        height: 200px
+      }
+         
+    </style>
+
+    <link rel="stylesheet" href="./bottom-sheet.min.css">
+
+</head>
+<body>
+
+
+
+  <bottom-sheet
+    aria-hidden="true"
+    id="panel-1">
+
+    <bottom-sheet-overlay></bottom-sheet-overlay>
+
+   
+    <bottom-sheet-panel>
+
+      <div class="header">
+        <div>
+          top bar
+        </div>
+        <div class="">
+          header
+        </div>
+      </div>
+
+      <bottom-sheet-content class="bottom-sheet-content" >
+        <ul class="bottom-sheet-list " >
+          <li>
+              Item 1
+          </li>
+          <li>
+              Item 2
+          </li>
+          <li>
+              Item 3
+          </li>
+          <li>
+              Item 4
+          </li>
+          <li>
+              Item 5
+          </li>
+        </ul>
+      </bottom-sheet-content>
+
+      <div>
+          <button 
+            data-action="close-bottom-sheet" 
+            class="" >
+            Close
+          </button>
+      </div>
+
+    </bottom-sheet-panel>
+
+  </bottom-sheet>
+
+  <script src="./bottom-sheet.min.js"></script>
+
+  
+</body>
+</html>

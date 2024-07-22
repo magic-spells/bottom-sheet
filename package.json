@@ -1,0 +1,28 @@
+{
+  "name": "tarot-rollup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "NODE_ENV=production rollup -c",
+    "dev": "NODE_ENV=development rollup -c --watch",
+    "prod": "NODE_ENV=production rollup -c --watch"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "postcss": "^8.4.38",
+    "postcss-lightningcss": "^1.0.0",
+    "rollup": "^2.79.1",
+    "rollup-plugin-lightningcss": "^1.0.0",
+    "rollup-plugin-postcss": "^4.0.2",
+    "rollup-plugin-scss": "^4.0.0",
+    "rollup-plugin-livereload": "^2.0.5",
+    "rollup-plugin-serve": "^1.1.1",
+    "sass": "^1.77.1"
+  }
+}
