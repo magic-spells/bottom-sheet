@@ -51,14 +51,13 @@
    
     <bottom-sheet-panel>
 
-      <div class="bottom-sheet-header">
-        <div>
-          top bar
+      <bottom-sheet-header>
+        <div style="padding-top: 12px;">
+          <h4 style="margin: 0px; padding: 8px 0px;">
+            Header
+          </h4>
         </div>
-        <div class="">
-          header
-        </div>
-      </div>
+      </bottom-sheet-header>
 
       <bottom-sheet-content class="bottom-sheet-content" >
         <ul class="bottom-sheet-list " >
@@ -80,12 +79,12 @@
         </ul>
       </bottom-sheet-content>
 
-      <div>
-          <button 
-            data-action="close-bottom-sheet" 
-            class="" >
-            Close
-          </button>
+      <div class="bottom-sheet-button-panel" >
+        <button 
+          data-action="close-bottom-sheet" 
+          class="" >
+          Close
+        </button>
       </div>
 
     </bottom-sheet-panel>

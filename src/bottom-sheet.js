@@ -22,7 +22,6 @@ class BottomSheet extends HTMLElement {
       startY: 0,
       currentY: 0,
       endY: 0,
-      velocity: 0,
       delta: 0
     };
 
@@ -56,7 +55,6 @@ class BottomSheet extends HTMLElement {
     drag.startY = e.targetTouches[0].screenY;
 
     // reset these variables
-    drag.velocity = 0;
     drag.direction = false;
     drag.delta = 0;
 
@@ -193,7 +191,15 @@ class BottomSheetOverlay extends HTMLElement {
   }
 }
 
+class BottomSheetHeader extends HTMLElement {
+  constructor() {
+    super();
+  }
+}
+
 customElements.define('bottom-sheet', BottomSheet);
 customElements.define('bottom-sheet-panel', BottomSheetPanel);
 customElements.define('bottom-sheet-content', BottomSheetContent);
 customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
+customElements.define('bottom-sheet-header', BottomSheetHeader);
+
