@@ -17,7 +17,7 @@ class BottomSheet extends HTMLElement {
       delta: 0
     };
 
-    // drag threshold
+    // Drag threshold
     _.threshold = 100;
 
     // Get panel elements
@@ -99,8 +99,8 @@ class BottomSheet extends HTMLElement {
     drag.direction = false;
     drag.delta = 0;
 
-    // Clear transition property
-    _.panel.style.transition = '';
+    // Clear transition class
+    _.panel.classList.remove('transitioning');
 
     // Only approve drag if at top of scroll panel or if we grabbed the header
     if (_.panelContent.scrollTop === 0 || e.target.closest('bottom-sheet-header')) {
@@ -176,13 +176,31 @@ class BottomSheet extends HTMLElement {
   }
 
   /**
-   * Handles the end of the transition event
-   * @param {TransitionEvent} e - The transition event
-   */
+  * Handles the end of the transition event
+  * @param {TransitionEvent} e - The transition event
+  */
   handleTransitionEnd(e) {
     if (e.propertyName === 'transform') {
       // Clear transition property after the hide transition is done
-      this.panel.style.transition = '';
+      this.panel.classList.remove('transitioning');
+    }
+  }
+
+  toggleBodyScroll(disable) {
+    if (disable) {
+      // Store the current body scroll position
+      this.scrollPosition = window.pageYOffset;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${this.scrollPosition}px`;
+      document.body.style.width = '100%';
+    } else {
+      // Restore the body scroll
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('position');
+      document.body.style.removeProperty('top');
+      document.body.style.removeProperty('width');
+      window.scrollTo(0, this.scrollPosition);
     }
   }
 
@@ -192,8 +210,9 @@ class BottomSheet extends HTMLElement {
   showPanel() {
     const _ = this;
     _.setAttribute('aria-hidden', 'false');
-    _.panel.style.transition = 'transform 300ms ease';
+    _.panel.classList.add('transitioning');
     _.panel.style.transform = 'translate3d(0,0,0)';
+    _.toggleBodyScroll(true);  // Disable body scroll
   }
 
   /**
@@ -202,8 +221,9 @@ class BottomSheet extends HTMLElement {
   hidePanel() {
     const _ = this;
     _.setAttribute('aria-hidden', 'true');
-    _.panel.style.transition = 'transform 300ms ease';
+    _.panel.classList.add('transitioning');
     _.panel.style.transform = 'translate3d(0,100%,0)';
+    _.toggleBodyScroll(false);  // Enable body scroll
   }
 }
 
