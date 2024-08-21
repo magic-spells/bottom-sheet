@@ -31,7 +31,6 @@ class BottomSheet extends HTMLElement {
 
     // Bind DOM events and show panel
     _.bindUI();
-    _.showPanel();
   }
 
   /**
@@ -59,7 +58,7 @@ class BottomSheet extends HTMLElement {
 
     // Bind touch events for header dragging functionality
     if (_.header) {
-      _.header.addEventListener('touchstart', (e) => _.panelDragStart(e), false);
+      _.header.addEventListener('touchstart', (e) => _.panelDragStart(e), true);
       _.header.addEventListener('touchmove', (e) => _.panelDragMove(e), false);
       _.header.addEventListener('touchend', (e) => _.panelDragEnd(e));
       _.header.addEventListener('touchcancel', (e) => _.panelDragEnd(e));
@@ -67,7 +66,7 @@ class BottomSheet extends HTMLElement {
 
     // Bind touch events for content dragging functionality
     if (_.panelContent) {
-      _.panelContent.addEventListener('touchstart', (e) => _.panelDragStart(e), false);
+      _.panelContent.addEventListener('touchstart', (e) => _.panelDragStart(e), true);
       _.panelContent.addEventListener('touchmove', (e) => _.panelDragMove(e), false);
       _.panelContent.addEventListener('touchend', (e) => _.panelDragEnd(e));
       _.panelContent.addEventListener('touchcancel', (e) => _.panelDragEnd(e));
@@ -75,7 +74,11 @@ class BottomSheet extends HTMLElement {
 
     // Bind click event for background overlay for closing the panel
     if (_.overlay) {
-      _.overlay.addEventListener('click', () => _.hidePanel());
+      _.overlay.addEventListener('touchstart', (e) => _.panelDragStart(e), true);
+      _.overlay.addEventListener('touchmove', (e) => _.panelDragMove(e), false);
+      _.overlay.addEventListener('touchend', (e) => _.panelDragEnd(e));
+      _.overlay.addEventListener('touchcancel', (e) => _.panelDragEnd(e));
+      _.overlay.addEventListener('click', () => _.hide());
     }
 
     // Used to remove style attributes after an animation has finished
@@ -126,8 +129,11 @@ class BottomSheet extends HTMLElement {
     // Clear transition class
     _.panel.classList.remove('transitioning');
 
+
     // Only approve drag if at top of scroll panel or if we grabbed the header
-    if (_.panelContent.scrollTop === 0 || e.target.closest('bottom-sheet-header')) {
+    if (_.panelContent.scrollTop === 0 || 
+      e.target.closest('bottom-sheet-header') ||
+      e.target.closest('bottom-sheet-overlay')) {
       drag.isDragging = true;
     }
   }
@@ -190,13 +196,13 @@ class BottomSheet extends HTMLElement {
     // Met drag threshold - hide panel
     if (drag.delta > _.threshold) {
       drag.delta = 0;
-      _.hidePanel();
+      _.hide();
       return;
     }
 
     // Didn't meet drag threshold - reshow panel
     drag.delta = 0;
-    _.showPanel();
+    _.show();
   }
 
   /**
@@ -213,22 +219,22 @@ class BottomSheet extends HTMLElement {
   /**
    * Shows the bottom sheet panel
    */
-  showPanel() {
+  show() {
     const _ = this;
     _.setAttribute('aria-hidden', 'false');
     _.panel.classList.add('transitioning');
-    _.panel.style.transform = 'translate3d(0,0,0)';
+    // _.panel.style.transform = 'translate3d(0,0,0)';
     _.toggleBodyScroll(true);  // Disable body scroll
   }
 
   /**
    * Hides the bottom sheet panel
    */
-  hidePanel() {
+  hide() {
     const _ = this;
     _.setAttribute('aria-hidden', 'true');
     _.panel.classList.add('transitioning');
-    _.panel.style.transform = 'translate3d(0,100%,0)';
+    // _.panel.style.transform = 'translate3d(0,100%,0)';
     _.toggleBodyScroll(false);  // Enable body scroll
   }
 }

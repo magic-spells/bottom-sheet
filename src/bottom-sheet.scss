@@ -14,6 +14,7 @@ bottom-sheet[aria-hidden="true"] bottom-sheet-overlay {
   pointer-events: none;
   background: rgba(0, 0, 0, 0);
   backdrop-filter: none;
+
 }
 
 bottom-sheet-header {
@@ -55,6 +56,16 @@ bottom-sheet-panel {
 bottom-sheet-panel.transitioning {
   transition: transform 300ms ease;
 }
+
+bottom-sheet[aria-hidden="true"] bottom-sheet-panel {
+  transform: translate3d(0,100%,0);
+}
+
+bottom-sheet[aria-hidden="false"] bottom-sheet-panel {
+  transform: translate3d(0,0,0);
+}
+
+
 
 bottom-sheet-content {
   box-sizing: border-box;
