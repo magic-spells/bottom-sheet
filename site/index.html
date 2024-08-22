@@ -51,6 +51,29 @@
         padding: 8px;
         letter-spacing: 0.05em
       }
+
+      .bg-image {
+        width: 100%;
+        height: 100vh;
+        object-fit: cover;
+      }
+
+      .test-button {
+        appearance: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        font-size: 16px;
+        border: 1px solid #222;
+        border-radius: 5px;
+        transform: translate3d(-50%,-50%,0);
+        padding: 12px 20px;
+        font-family: Helvetica, arial;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        background: #2b2c42;
+        color: white;
+      }
          
     </style>
 
@@ -59,13 +82,19 @@
 </head>
 <body>
 
-  <img src="./bg-image.jpg" style="width: 100%;" />
+  <img class="bg-image" 
+    src="./bg-image.jpg" style="width: 100%;" />
 
+  <button 
+    id="show-bottom-sheet-button"
+    class="test-button" >
+    Show bottom sheet
+  </button>
 
 
   <bottom-sheet
     aria-hidden="true"
-    id="panel-1">
+    id="bottom-sheet-1">
 
     <bottom-sheet-overlay></bottom-sheet-overlay>
 
@@ -119,6 +148,16 @@
 
   <script src="./bottom-sheet.min.js"></script>
 
-  
+  <script>
+    let button = document.getElementById('show-bottom-sheet-button');
+    let bottomSheet = document.getElementById('bottom-sheet-1');
+
+    button.addEventListener('click', function(e){
+      bottomSheet.show()
+    })
+    
+  </script>
+
+
 </body>
 </html>

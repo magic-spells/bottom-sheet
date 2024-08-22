@@ -223,7 +223,7 @@ class BottomSheet extends HTMLElement {
     const _ = this;
     _.setAttribute('aria-hidden', 'false');
     _.panel.classList.add('transitioning');
-    // _.panel.style.transform = 'translate3d(0,0,0)';
+    _.panel.style.transform = null;
     _.toggleBodyScroll(true);  // Disable body scroll
   }
 
@@ -234,7 +234,7 @@ class BottomSheet extends HTMLElement {
     const _ = this;
     _.setAttribute('aria-hidden', 'true');
     _.panel.classList.add('transitioning');
-    // _.panel.style.transform = 'translate3d(0,100%,0)';
+    _.panel.style.transform = null;
     _.toggleBodyScroll(false);  // Enable body scroll
   }
 }
