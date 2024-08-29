@@ -1,5 +1,20 @@
 import './bottom-sheet.scss';
 
+(function (global, factory) {
+  if (typeof module === 'object' && typeof module.exports === 'object') {
+    // CommonJS (Node.js)
+    module.exports = factory();
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD (RequireJS)
+    define(factory);
+  } else {
+    // Browser global (window)
+    global.BottomSheet = factory();
+  }
+}(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : {}, function () {
+  'use strict';
+
+  
 /**
  * BottomSheet class that handles the functionality of a bottom sheet component
  */
@@ -268,3 +283,7 @@ customElements.define('bottom-sheet-panel', BottomSheetPanel);
 customElements.define('bottom-sheet-content', BottomSheetContent);
 customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
 customElements.define('bottom-sheet-header', BottomSheetHeader);
+
+// Return the main class (BottomSheet)
+return BottomSheet;
+}));

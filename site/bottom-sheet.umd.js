@@ -1,7 +1,9 @@
 
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
-(function () {
-  'use strict';
+(function (factory) {
+  typeof define === 'function' && define.amd ? define(factory) :
+  factory();
+})((function () { 'use strict';
 
   (function (global, factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
@@ -14,9 +16,9 @@
       // Browser global (window)
       global.BottomSheet = factory();
     }
-  }(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : {}, function () {
+  }(typeof window !== "undefined" ? window : undefined, function () {
 
-    
+
   /**
    * BottomSheet class that handles the functionality of a bottom sheet component
    */
@@ -286,9 +288,9 @@
   customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
   customElements.define('bottom-sheet-header', BottomSheetHeader);
 
-  // Return the main class (BottomSheet)
-  return BottomSheet;
+    // Return the main class (BottomSheet)
+    return BottomSheet;
   }));
 
-})();
-//# sourceMappingURL=bottom-sheet.min.js.map
+}));
+//# sourceMappingURL=bottom-sheet.umd.js.map
