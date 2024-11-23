@@ -5,7 +5,7 @@ A lightweight, customizable Web Component for creating accessible bottom sheets.
 ## Features
 
 - No dependencies
-- Lightweight (~2KB minified)
+- Lightweight
 - Follows accessibility best practices
 - Smooth open/close animations
 - Supports touch gestures for drag-to-close
