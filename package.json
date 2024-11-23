@@ -7,6 +7,7 @@
   "type": "commonjs",
   "main": "dist/bottom-sheet.min.js",
   "unpkg": "dist/bottom-sheet.min.js",
+  "style": "dist/bottom-sheet.min.css",
   "sideEffects": true,
   "repository": {
     "type": "git",
