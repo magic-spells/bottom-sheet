@@ -31,6 +31,7 @@ export default [
         targets: [
           { src: 'dist/bottom-sheet.js', dest: 'demo' },
           { src: 'dist/bottom-sheet.min.css', dest: 'demo' },
+          { src: 'dist/bottom-sheet.js.map', dest: 'demo' },
         ],
         hook: 'writeBundle',
       }),
@@ -47,7 +48,7 @@ export default [
     plugins: [
       resolve(),
       postcss({
-        extract: 'dist/bottom-sheet.min.css', // Minified CSS output
+        extract: 'bottom-sheet.min.css', // Minified CSS output
         minimize: true,
       }),
       terser({
