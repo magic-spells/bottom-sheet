@@ -1,5 +1,24 @@
 import './bottom-sheet.css';
 
+const throttle = (func, limit) => {
+  let inThrottle;
+  return function (...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+    }
+  };
+};
+
+const debounce = (func, wait) => {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+};
+
 /**
  * BottomSheet class that handles the functionality of a bottom sheet component
  */
@@ -10,10 +29,16 @@ class BottomSheet extends HTMLElement {
   #handleTouchEnd;
   #handleTransitionEnd;
   #handleOverlayClick;
+  #handleWindowResize;
 
   constructor() {
     super();
     const _ = this;
+
+    _.setAttribute('aria-hidden', true);
+
+    // Add maxWidth property with default using dataset API
+    _.maxWidth = parseInt(_.dataset.maxWidth) || 768;
 
     // Set default drag properties
     _.drag = {
@@ -39,6 +64,17 @@ class BottomSheet extends HTMLElement {
     this.#handleTouchEnd = this.panelDragEnd.bind(this);
     this.#handleTransitionEnd = this.handleTransitionEnd.bind(this);
     this.#handleOverlayClick = this.hide.bind(this);
+
+    // Add resize handler with throttle and debounce
+    this.#handleWindowResize = throttle(
+      () => {
+        console.log('window resize throttle');
+        if (window.innerWidth > _.maxWidth) {
+          _.hide();
+        }
+      },
+      100 // throttle limit
+    );
 
     // Set ARIA attributes and bind UI
     _.setupAriaAttributes();
@@ -97,11 +133,23 @@ class BottomSheet extends HTMLElement {
     }
   }
 
+  connectedCallback() {
+    window.addEventListener('resize', this.#handleWindowResize);
+
+    // Initial check
+    if (window.innerWidth > this.maxWidth) {
+      this.hide();
+    }
+  }
+
   /**
    * Cleanup event listeners when element is removed
    */
   disconnectedCallback() {
     const _ = this;
+
+    // Remove resize listener
+    window.removeEventListener('resize', this.#handleWindowResize);
 
     if (_.header) {
       _.header.removeEventListener('touchstart', this.#handleTouchStart, true);
@@ -223,6 +271,12 @@ class BottomSheet extends HTMLElement {
 
   show() {
     const _ = this;
+
+    // Don't show if width is above max or was closed by resize
+    if (window.innerWidth > _.maxWidth) {
+      return;
+    }
+
     _.setAttribute('aria-hidden', 'false');
     _.removeAttribute('inert');
     _.panel.classList.add('transitioning');
@@ -273,5 +327,3 @@ customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
 customElements.define('bottom-sheet-header', BottomSheetHeader);
 
 export { BottomSheet, BottomSheetPanel, BottomSheetContent, BottomSheetOverlay, BottomSheetHeader };
-
-export default BottomSheet;
