@@ -1,4 +1,6 @@
-import './bottom-sheet.css';
+'use strict';
+
+Object.defineProperty(exports, '__esModule', { value: true });
 
 /**
  * BottomSheet class that handles the functionality of a bottom sheet component
@@ -272,6 +274,10 @@ customElements.define('bottom-sheet-content', BottomSheetContent);
 customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
 customElements.define('bottom-sheet-header', BottomSheetHeader);
 
-export { BottomSheet, BottomSheetPanel, BottomSheetContent, BottomSheetOverlay, BottomSheetHeader };
-
-export default BottomSheet;
+exports.BottomSheet = BottomSheet;
+exports.BottomSheetContent = BottomSheetContent;
+exports.BottomSheetHeader = BottomSheetHeader;
+exports.BottomSheetOverlay = BottomSheetOverlay;
+exports.BottomSheetPanel = BottomSheetPanel;
+exports.default = BottomSheet;
+//# sourceMappingURL=bottom-sheet.cjs.js.map

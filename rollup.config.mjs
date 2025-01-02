@@ -6,56 +6,91 @@ import postcss from 'rollup-plugin-postcss';
 
 const dev = process.env.ROLLUP_WATCH;
 
+// Shared CSS plugin config to avoid duplicate processing
+const cssPlugin = postcss({
+  extract: 'bottom-sheet.min.css',
+  minimize: true,
+});
+
 export default [
-  // Development build
+  // ESM build
   {
     input: 'src/bottom-sheet.js',
     output: {
-      file: 'dist/bottom-sheet.js',
-      format: 'iife',
-      sourcemap: dev,
+      file: 'dist/bottom-sheet.esm.js',
+      format: 'es',
+      sourcemap: true,
     },
-    plugins: [
-      resolve(),
-      postcss({
-        extract: 'bottom-sheet.min.css', // Extracts the CSS to a separate file
-        minimize: true,
-      }),
-      dev &&
-        serve({
-          contentBase: ['dist', 'demo'],
-          open: true,
-          port: 3000,
-        }),
-      copy({
-        targets: [
-          { src: 'dist/bottom-sheet.js', dest: 'demo' },
-          { src: 'dist/bottom-sheet.min.css', dest: 'demo' },
-          { src: 'dist/bottom-sheet.js.map', dest: 'demo' },
-        ],
-        hook: 'writeBundle',
-      }),
-    ],
+    plugins: [resolve(), cssPlugin],
   },
-  // Production build (minified)
+  // CommonJS build
+  {
+    input: 'src/bottom-sheet.js',
+    output: {
+      file: 'dist/bottom-sheet.cjs.js',
+      format: 'cjs',
+      sourcemap: true,
+      exports: 'named',
+    },
+    plugins: [resolve(), cssPlugin],
+  },
+  // Minified IIFE for browsers
   {
     input: 'src/bottom-sheet.js',
     output: {
       file: 'dist/bottom-sheet.min.js',
       format: 'iife',
+      name: 'BottomSheet',
       sourcemap: false,
     },
     plugins: [
       resolve(),
-      postcss({
-        extract: 'bottom-sheet.min.css', // Minified CSS output
-        minimize: true,
-      }),
+      cssPlugin,
       terser({
+        keep_classnames: true,
         format: {
           comments: false,
         },
       }),
     ],
   },
+  // Development build
+  ...(dev
+    ? [
+        {
+          input: 'src/bottom-sheet.js',
+          output: {
+            file: 'dist/bottom-sheet.esm.js',
+            format: 'es',
+            sourcemap: true,
+          },
+          plugins: [
+            resolve(),
+            cssPlugin,
+            serve({
+              contentBase: ['dist', 'demo'],
+              open: true,
+              port: 3000,
+            }),
+            copy({
+              targets: [
+                {
+                  src: 'dist/bottom-sheet.esm.js',
+                  dest: 'demo',
+                },
+                {
+                  src: 'dist/bottom-sheet.esm.js.map',
+                  dest: 'demo',
+                },
+                {
+                  src: 'dist/bottom-sheet.min.css',
+                  dest: 'demo',
+                },
+              ],
+              hook: 'writeBundle',
+            }),
+          ],
+        },
+      ]
+    : []),
 ];

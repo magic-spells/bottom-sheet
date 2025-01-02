@@ -1,5 +1,3 @@
-import './bottom-sheet.css';
-
 /**
  * BottomSheet class that handles the functionality of a bottom sheet component
  */
@@ -272,6 +270,5 @@ customElements.define('bottom-sheet-content', BottomSheetContent);
 customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
 customElements.define('bottom-sheet-header', BottomSheetHeader);
 
-export { BottomSheet, BottomSheetPanel, BottomSheetContent, BottomSheetOverlay, BottomSheetHeader };
-
-export default BottomSheet;
+export { BottomSheet, BottomSheetContent, BottomSheetHeader, BottomSheetOverlay, BottomSheetPanel, BottomSheet as default };
+//# sourceMappingURL=bottom-sheet.esm.js.map
