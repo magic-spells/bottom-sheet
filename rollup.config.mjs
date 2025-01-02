@@ -40,7 +40,6 @@ export default [
     output: {
       file: 'dist/bottom-sheet.min.js',
       format: 'iife',
-      name: 'BottomSheet',
       sourcemap: false,
     },
     plugins: [

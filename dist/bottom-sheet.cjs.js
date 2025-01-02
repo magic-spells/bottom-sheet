@@ -1,7 +1,5 @@
 'use strict';
 
-Object.defineProperty(exports, '__esModule', { value: true });
-
 const throttle = (func, limit) => {
   let inThrottle;
   return function (...args) {
@@ -320,10 +318,5 @@ customElements.define('bottom-sheet-content', BottomSheetContent);
 customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
 customElements.define('bottom-sheet-header', BottomSheetHeader);
 
-exports.BottomSheet = BottomSheet;
-exports.BottomSheetContent = BottomSheetContent;
-exports.BottomSheetHeader = BottomSheetHeader;
-exports.BottomSheetOverlay = BottomSheetOverlay;
-exports.BottomSheetPanel = BottomSheetPanel;
-exports.default = BottomSheet;
+// export { BottomSheet, BottomSheetPanel, BottomSheetContent, BottomSheetOverlay, BottomSheetHeader };
 //# sourceMappingURL=bottom-sheet.cjs.js.map

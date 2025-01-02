@@ -316,5 +316,5 @@ customElements.define('bottom-sheet-content', BottomSheetContent);
 customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
 customElements.define('bottom-sheet-header', BottomSheetHeader);
 
-export { BottomSheet, BottomSheetContent, BottomSheetHeader, BottomSheetOverlay, BottomSheetPanel, BottomSheet as default };
+// export { BottomSheet, BottomSheetPanel, BottomSheetContent, BottomSheetOverlay, BottomSheetHeader };
 //# sourceMappingURL=bottom-sheet.esm.js.map

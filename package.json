@@ -1,7 +1,7 @@
 {
   "name": "@magic-spells/bottom-sheet",
-  "version": "0.2.0",
-  "description": "Bottom sheet web component",
+  "version": "0.2.1",
+  "description": "Bottom sheet web component.",
   "author": "Cory Schulz",
   "license": "MIT",
   "type": "module",

@@ -326,4 +326,4 @@ customElements.define('bottom-sheet-content', BottomSheetContent);
 customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
 customElements.define('bottom-sheet-header', BottomSheetHeader);
 
-export { BottomSheet, BottomSheetPanel, BottomSheetContent, BottomSheetOverlay, BottomSheetHeader };
+// export { BottomSheet, BottomSheetPanel, BottomSheetContent, BottomSheetOverlay, BottomSheetHeader };
