@@ -125,6 +125,9 @@ class BottomSheet extends HTMLElement {
       endY: 0,
       delta: 0,
       direction: null, // 'up', 'down', or null when not dragging
+      isHeader: false, // whether drag started on header
+      isOverlay: false, // whether drag started on overlay
+      isAtTop: false, // whether content is scrolled to top
     };
 
     // get panel elements
@@ -315,11 +318,20 @@ class BottomSheet extends HTMLElement {
 
     _.panel.classList.remove('transitioning');
 
-    if (
-      _.panelContent?.scrollTop === 0 ||
-      e.target.closest('bottom-sheet-header') ||
-      e.target.closest('bottom-sheet-overlay')
-    ) {
+    // Only allow dragging if:
+    // 1. We're at the top of content and dragging down
+    // 2. We're interacting with the header
+    // 3. We're interacting with the overlay
+    const isHeader = !!e.target.closest('bottom-sheet-header');
+    const isOverlay = !!e.target.closest('bottom-sheet-overlay');
+    const isAtTop = _.panelContent?.scrollTop === 0;
+    
+    // Store these states for use in move handler
+    drag.isHeader = isHeader;
+    drag.isOverlay = isOverlay;
+    drag.isAtTop = isAtTop;
+    
+    if (isHeader || isOverlay || isAtTop) {
       drag.isDragging = true;
     }
   }
@@ -360,11 +372,33 @@ class BottomSheet extends HTMLElement {
       }
     }
 
+    // If we're in the content area (not header/overlay) and not at the top,
+    // or if we're at the top but scrolling up, we should allow normal scrolling
+    if (!drag.isHeader && !drag.isOverlay) {
+      // If we're not at the top, let the browser handle the scroll
+      if (!drag.isAtTop) {
+        return;
+      }
+      
+      // If we're at the top but trying to scroll up (drag down), 
+      // allow the panel drag; otherwise, let the content scroll
+      if (drag.direction === 'up') {
+        return;
+      }
+    }
+
+    // At this point, we're either:
+    // 1. On the header
+    // 2. On the overlay
+    // 3. At the top of content and dragging down
+    // So we should control the panel movement
+
+    // For all these cases, we want to prevent default scrolling
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+
     // handle upward movement (negative delta) - pulling beyond top position
     if (drag.delta < 0) {
-      if (e.cancelable) e.preventDefault();
-      e.stopPropagation();
-
       // apply strong resistance to upward movement
       const absValue = Math.abs(drag.delta);
       const resistedDelta = _.#applyResistance(absValue);
@@ -376,9 +410,6 @@ class BottomSheet extends HTMLElement {
 
     // handle downward movement (positive delta) - dismissing
     if (drag.delta > 0) {
-      if (e.cancelable) e.preventDefault();
-      e.stopPropagation();
-
       // for downward drag, use natural movement with no resistance
       _.panel.style.transform = `translate3d(0,${drag.delta}px,0)`;
 

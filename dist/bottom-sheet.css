@@ -61,12 +61,12 @@ bottom-sheet-panel {
   display: flex;
   flex-direction: column;
   width: 100%;
-  top: var(--bs-panel-top-position, 15vh);
+  bottom: 0px;
   left: 0;
+  max-height: var(--bs-panel-max-height, 85vh);
   overflow: hidden;
   box-shadow: var(--bs-panel-box-shadow, 0 1px 20px -4px rgba(0, 0, 0, 0.3), 0 0 7px 0 rgba(0, 0, 0, 0.1));
   will-change: transform;
-  height: var(--bs-panel-height, 85vh);
   transition: none;
   z-index: var(--bs-z-index-panel, 1000);
 }
@@ -87,5 +87,6 @@ bottom-sheet-content {
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   padding: 0 var(--bs-content-padding, 20px);
-  flex: 1;
 }
+
+/*# sourceMappingURL=true */

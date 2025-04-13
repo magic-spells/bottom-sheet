@@ -14,7 +14,7 @@ bottom-sheet > bottom-sheet-overlay {
   z-index: var(--bs-z-index-overlay, 999);
 }
 
-bottom-sheet[aria-hidden="true"] bottom-sheet-overlay {
+bottom-sheet[aria-hidden='true'] bottom-sheet-overlay {
   pointer-events: none;
   background: rgba(0, 0, 0, 0);
   backdrop-filter: none;
@@ -25,7 +25,7 @@ bottom-sheet-header {
   position: relative;
 
   &::before {
-    content: "";
+    content: '';
     display: block;
     background: var(--bs-handle-color, #bbb);
     height: var(--bs-handle-height, 5px);
@@ -47,12 +47,16 @@ bottom-sheet-panel {
   display: flex;
   flex-direction: column;
   width: 100%;
-  top: var(--bs-panel-top-position, 15vh);
+  bottom: 0px;
   left: 0;
+  max-height: var(--bs-panel-max-height, 85vh);
   overflow: hidden;
-  box-shadow: var(--bs-panel-box-shadow, 0 1px 20px -4px rgba(0, 0, 0, 0.3), 0 0 7px 0 rgba(0, 0, 0, 0.1));
+  box-shadow: var(
+    --bs-panel-box-shadow,
+    0 1px 20px -4px rgba(0, 0, 0, 0.3),
+    0 0 7px 0 rgba(0, 0, 0, 0.1)
+  );
   will-change: transform;
-  height: var(--bs-panel-height, 85vh);
   transition: none;
   z-index: var(--bs-z-index-panel, 1000);
 
@@ -61,12 +65,12 @@ bottom-sheet-panel {
   }
 }
 
-bottom-sheet[aria-hidden="true"] bottom-sheet-panel {
-  transform: translate3d(0,100%,0);
+bottom-sheet[aria-hidden='true'] bottom-sheet-panel {
+  transform: translate3d(0, 100%, 0);
 }
 
-bottom-sheet[aria-hidden="false"] bottom-sheet-panel {
-  transform: translate3d(0,0,0);
+bottom-sheet[aria-hidden='false'] bottom-sheet-panel {
+  transform: translate3d(0, 0, 0);
 }
 
 bottom-sheet-content {
@@ -74,5 +78,4 @@ bottom-sheet-content {
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   padding: 0 var(--bs-content-padding, 20px);
-  flex: 1;
 }
