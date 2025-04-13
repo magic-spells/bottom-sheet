@@ -26,40 +26,41 @@
     #handleTransitionEnd;
     #handleOverlayClick;
     #handleWindowResize;
-    
+
     // Physics constants
     #overscrollResistance = 0.1; // Lower = more resistance when pulling beyond limits
     #dragThreshold = 100; // Distance in pixels needed to dismiss by dragging
-    
+
     // Private backing fields for properties
     #maxDisplayWidth = Infinity; // Default: no limit (always show)
     #scrollPosition = 0; // For saving scroll position when locking body scroll
-    
+
     /**
      * Define which attributes should be observed for changes
      */
     static get observedAttributes() {
       return ['max-display-width'];
     }
-    
+
     /**
      * Called when observed attributes change
      */
     attributeChangedCallback(name, oldValue, newValue) {
+      const _ = this;
       if (oldValue === newValue) return;
-      
+
       if (name === 'max-display-width') {
         if (newValue === null || newValue === 'none') {
           // No limit
-          this.maxDisplayWidth = Infinity;
+          _.maxDisplayWidth = Infinity;
         } else {
           // Parse as number or default to Infinity if not a valid number
           const parsed = parseInt(newValue);
-          this.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
+          _.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
         }
       }
     }
-    
+
     /**
      * Get the maximum display width
      * @return {number} The maximum width in pixels where the bottom sheet is shown
@@ -67,19 +68,20 @@
     get maxDisplayWidth() {
       return this.#maxDisplayWidth;
     }
-    
+
     /**
      * Set the maximum display width and reflect to attribute
      * @param {number} value - The maximum width in pixels where the bottom sheet is shown
      */
     set maxDisplayWidth(value) {
-      this.#maxDisplayWidth = value;
-      
+      const _ = this;
+      _.#maxDisplayWidth = value;
+
       // Don't set the attribute to "Infinity" in HTML
       if (value === Infinity) {
-        this.removeAttribute('max-display-width');
+        _.removeAttribute('max-display-width');
       } else {
-        this.setAttribute('max-display-width', value);
+        _.setAttribute('max-display-width', value);
       }
     }
 
@@ -118,14 +120,14 @@
       _.header = _.querySelector('bottom-sheet-header');
 
       // Bind event handlers
-      this.#handleTouchStart = this.panelDragStart.bind(this);
-      this.#handleTouchMove = this.panelDragMove.bind(this);
-      this.#handleTouchEnd = this.panelDragEnd.bind(this);
-      this.#handleTransitionEnd = this.handleTransitionEnd.bind(this);
-      this.#handleOverlayClick = this.hide.bind(this);
+      _.#handleTouchStart = _.panelDragStart.bind(this);
+      _.#handleTouchMove = _.panelDragMove.bind(this);
+      _.#handleTouchEnd = _.panelDragEnd.bind(this);
+      _.#handleTransitionEnd = _.handleTransitionEnd.bind(this);
+      _.#handleOverlayClick = _.hide.bind(this);
 
       // Add resize handler with throttle
-      this.#handleWindowResize = throttle(
+      _.#handleWindowResize = throttle(
         () => {
           if (window.innerWidth > _.maxDisplayWidth) {
             _.hide();
@@ -159,10 +161,11 @@
      * @param {KeyboardEvent} e - The keyboard event
      */
     #handleKeyDown = (e) => {
+      const _ = this;
       // Close on escape key press
-      if (e.key === 'Escape' && this.getAttribute('aria-hidden') === 'false') {
+      if (e.key === 'Escape' && _.getAttribute('aria-hidden') === 'false') {
         e.preventDefault();
-        this.hide();
+        _.hide();
       }
     };
 
@@ -174,44 +177,45 @@
 
       // Bind touch events for header
       if (_.header) {
-        _.header.addEventListener('touchstart', this.#handleTouchStart, true);
-        _.header.addEventListener('touchmove', this.#handleTouchMove, false);
-        _.header.addEventListener('touchend', this.#handleTouchEnd);
-        _.header.addEventListener('touchcancel', this.#handleTouchEnd);
+        _.header.addEventListener('touchstart', _.#handleTouchStart, true);
+        _.header.addEventListener('touchmove', _.#handleTouchMove, false);
+        _.header.addEventListener('touchend', _.#handleTouchEnd);
+        _.header.addEventListener('touchcancel', _.#handleTouchEnd);
       }
 
       // Bind touch events for content
       if (_.panelContent) {
-        _.panelContent.addEventListener('touchstart', this.#handleTouchStart, true);
-        _.panelContent.addEventListener('touchmove', this.#handleTouchMove, false);
-        _.panelContent.addEventListener('touchend', this.#handleTouchEnd);
-        _.panelContent.addEventListener('touchcancel', this.#handleTouchEnd);
+        _.panelContent.addEventListener('touchstart', _.#handleTouchStart, true);
+        _.panelContent.addEventListener('touchmove', _.#handleTouchMove, false);
+        _.panelContent.addEventListener('touchend', _.#handleTouchEnd);
+        _.panelContent.addEventListener('touchcancel', _.#handleTouchEnd);
       }
 
       // Bind touch events for overlay
       if (_.overlay) {
-        _.overlay.addEventListener('touchstart', this.#handleTouchStart, true);
-        _.overlay.addEventListener('touchmove', this.#handleTouchMove, false);
-        _.overlay.addEventListener('touchend', this.#handleTouchEnd);
-        _.overlay.addEventListener('touchcancel', this.#handleTouchEnd);
-        _.overlay.addEventListener('click', this.#handleOverlayClick);
+        _.overlay.addEventListener('touchstart', _.#handleTouchStart, true);
+        _.overlay.addEventListener('touchmove', _.#handleTouchMove, false);
+        _.overlay.addEventListener('touchend', _.#handleTouchEnd);
+        _.overlay.addEventListener('touchcancel', _.#handleTouchEnd);
+        _.overlay.addEventListener('click', _.#handleOverlayClick);
       }
 
       // Transition end handler
       if (_.panel) {
-        _.panel.addEventListener('transitionend', this.#handleTransitionEnd);
+        _.panel.addEventListener('transitionend', _.#handleTransitionEnd);
       }
 
       // Add keyboard support
-      document.addEventListener('keydown', this.#handleKeyDown);
+      document.addEventListener('keydown', _.#handleKeyDown);
     }
 
     connectedCallback() {
-      window.addEventListener('resize', this.#handleWindowResize);
+      const _ = this;
+      window.addEventListener('resize', _.#handleWindowResize);
 
       // Initial check
-      if (window.innerWidth > this.maxDisplayWidth) {
-        this.hide();
+      if (window.innerWidth > _.maxDisplayWidth) {
+        _.hide();
       }
     }
 
@@ -222,36 +226,36 @@
       const _ = this;
 
       // Remove resize listener
-      window.removeEventListener('resize', this.#handleWindowResize);
+      window.removeEventListener('resize', _.#handleWindowResize);
 
       if (_.header) {
-        _.header.removeEventListener('touchstart', this.#handleTouchStart, true);
-        _.header.removeEventListener('touchmove', this.#handleTouchMove, false);
-        _.header.removeEventListener('touchend', this.#handleTouchEnd);
-        _.header.removeEventListener('touchcancel', this.#handleTouchEnd);
+        _.header.removeEventListener('touchstart', _.#handleTouchStart, true);
+        _.header.removeEventListener('touchmove', _.#handleTouchMove, false);
+        _.header.removeEventListener('touchend', _.#handleTouchEnd);
+        _.header.removeEventListener('touchcancel', _.#handleTouchEnd);
       }
 
       if (_.panelContent) {
-        _.panelContent.removeEventListener('touchstart', this.#handleTouchStart, true);
-        _.panelContent.removeEventListener('touchmove', this.#handleTouchMove, false);
-        _.panelContent.removeEventListener('touchend', this.#handleTouchEnd);
-        _.panelContent.removeEventListener('touchcancel', this.#handleTouchEnd);
+        _.panelContent.removeEventListener('touchstart', _.#handleTouchStart, true);
+        _.panelContent.removeEventListener('touchmove', _.#handleTouchMove, false);
+        _.panelContent.removeEventListener('touchend', _.#handleTouchEnd);
+        _.panelContent.removeEventListener('touchcancel', _.#handleTouchEnd);
       }
 
       if (_.overlay) {
-        _.overlay.removeEventListener('touchstart', this.#handleTouchStart, true);
-        _.overlay.removeEventListener('touchmove', this.#handleTouchMove, false);
-        _.overlay.removeEventListener('touchend', this.#handleTouchEnd);
-        _.overlay.removeEventListener('touchcancel', this.#handleTouchEnd);
-        _.overlay.removeEventListener('click', this.#handleOverlayClick);
+        _.overlay.removeEventListener('touchstart', _.#handleTouchStart, true);
+        _.overlay.removeEventListener('touchmove', _.#handleTouchMove, false);
+        _.overlay.removeEventListener('touchend', _.#handleTouchEnd);
+        _.overlay.removeEventListener('touchcancel', _.#handleTouchEnd);
+        _.overlay.removeEventListener('click', _.#handleOverlayClick);
       }
 
       if (_.panel) {
-        _.panel.removeEventListener('transitionend', this.#handleTransitionEnd);
+        _.panel.removeEventListener('transitionend', _.#handleTransitionEnd);
       }
-      
+
       // Remove keyboard listener
-      document.removeEventListener('keydown', this.#handleKeyDown);
+      document.removeEventListener('keydown', _.#handleKeyDown);
     }
 
     /**
@@ -259,19 +263,20 @@
      * @param {boolean} disable - Whether to disable body scrolling
      */
     toggleBodyScroll(disable) {
+      const _ = this;
       if (disable) {
-        this.#scrollPosition = window.pageYOffset;
+        _.#scrollPosition = window.pageYOffset;
         document.body.style.overflow = 'hidden';
         document.body.style.position = 'fixed';
-        document.body.style.top = `-${this.#scrollPosition}px`;
+        document.body.style.top = `-${_.#scrollPosition}px`;
         document.body.style.width = '100%';
       } else {
         document.body.style.removeProperty('overflow');
         document.body.style.removeProperty('position');
         document.body.style.removeProperty('top');
         document.body.style.removeProperty('width');
-        window.scrollTo(0, this.#scrollPosition);
-        this.#scrollPosition = 0;
+        window.scrollTo(0, _.#scrollPosition);
+        _.#scrollPosition = 0;
       }
     }
 
@@ -329,12 +334,12 @@
       if (drag.delta < 0) {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
-        
+
         // Apply strong resistance to upward movement
         // This makes it hard to pull the sheet beyond its natural top position
         const absValue = Math.abs(drag.delta);
-        const resistedDelta = this.#applyResistance(absValue); // Use internal resistance constant
-        
+        const resistedDelta = _.#applyResistance(absValue); // Use internal resistance constant
+
         // Convert back to negative (upward movement)
         _.panel.style.transform = `translate3d(0,${-resistedDelta}px,0)`;
         return;
@@ -344,13 +349,13 @@
       if (drag.delta > 0) {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
-        
+
         // For downward drag, use natural movement with no resistance
         // This feels like a normal draggable surface with no stretchy effect
         _.panel.style.transform = `translate3d(0,${drag.delta}px,0)`;
-        
+
         // Visual feedback when passing threshold (subtle)
-        if (drag.delta > this.#dragThreshold) ;
+        if (drag.delta > _.#dragThreshold) ;
       }
     }
 
@@ -364,7 +369,7 @@
 
       // Add the transitioning class to ensure smooth animation back to position
       _.panel.classList.add('transitioning');
-      
+
       // Handle negative delta (upward drag attempts) - always snap back to normal
       if (drag.delta < 0) {
         drag.delta = 0;
@@ -374,7 +379,7 @@
       }
 
       // For downward drags, check if we've passed the dismissal threshold
-      if (drag.delta > this.#dragThreshold) {
+      if (drag.delta > _.#dragThreshold) {
         drag.delta = 0;
         drag.direction = null; // Reset direction for next drag
         _.hide();
@@ -409,12 +414,14 @@
       _.panel.classList.add('transitioning');
       _.panel.style.transform = null;
       _.toggleBodyScroll(true);
-      
+
       // Dispatch custom event
-      this.dispatchEvent(new CustomEvent('bottomsheet:open', {
-        bubbles: true,
-        detail: { sheet: this }
-      }));
+      _.dispatchEvent(
+        new CustomEvent('bottomsheet:open', {
+          bubbles: true,
+          detail: { sheet: this },
+        })
+      );
     }
 
     /**
@@ -427,12 +434,14 @@
       _.panel.classList.add('transitioning');
       _.panel.style.transform = null;
       _.toggleBodyScroll(false);
-      
+
       // Dispatch custom event
-      this.dispatchEvent(new CustomEvent('bottomsheet:close', {
-        bubbles: true,
-        detail: { sheet: this }
-      }));
+      _.dispatchEvent(
+        new CustomEvent('bottomsheet:close', {
+          bubbles: true,
+          detail: { sheet: this },
+        })
+      );
     }
   }
 
