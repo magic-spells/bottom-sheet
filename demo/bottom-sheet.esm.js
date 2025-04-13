@@ -134,7 +134,7 @@ class BottomSheet extends HTMLElement {
       }, 100),
       actionClick: (e) => {
         // check if the clicked element or any of its parents has the close action
-        const closeButton = e.target.closest('[data-action="close-bottom-sheet"]');
+        const closeButton = e.target.closest('[data-action="hide-bottom-sheet"]');
         if (closeButton) {
           e.preventDefault();
           _.hide();
@@ -309,12 +309,12 @@ class BottomSheet extends HTMLElement {
     const isHeader = !!e.target.closest('bottom-sheet-header');
     const isOverlay = !!e.target.closest('bottom-sheet-overlay');
     const isAtTop = _.panelContent?.scrollTop === 0;
-    
+
     // Store these states for use in move handler
     drag.isHeader = isHeader;
     drag.isOverlay = isOverlay;
     drag.isAtTop = isAtTop;
-    
+
     if (isHeader || isOverlay || isAtTop) {
       drag.isDragging = true;
     }
@@ -363,8 +363,8 @@ class BottomSheet extends HTMLElement {
       if (!drag.isAtTop) {
         return;
       }
-      
-      // If we're at the top but trying to scroll up (drag down), 
+
+      // If we're at the top but trying to scroll up (drag down),
       // allow the panel drag; otherwise, let the content scroll
       if (drag.direction === 'up') {
         return;
