@@ -1,0 +1,56 @@
+// Bottom Sheet variables
+// SCSS variables for internal component use and customization
+// these variables can be customized by the user
+
+// z-index
+$z-index-overlay: 999 !default;
+$z-index-panel: 1000 !default;
+
+// colors
+$overlay-background: rgba(0, 0, 0, 0.5) !default;
+$panel-background: white !default;
+$panel-box-shadow: 0 1px 20px -4px rgba(0, 0, 0, 0.3), 0 0 7px 0 rgba(0, 0, 0, 0.1) !default;
+$handle-color: #bbb !default;
+
+// sizing
+$panel-height: 85vh !default;
+$panel-top-position: 15vh !default;
+$panel-border-radius: 25px !default;
+$handle-width: 50px !default;
+$handle-height: 5px !default;
+
+// spacing
+$content-padding: 20px !default;
+
+// animation
+$transition-duration: 300ms !default;
+$transition-timing: ease !default;
+$transition-blur: 5px !default;
+
+// Define CSS Custom Properties (variables) using the SCSS values as defaults
+:root {
+  // colors
+  --bs-overlay-background: #{$overlay-background};
+  --bs-panel-background: #{$panel-background};
+  --bs-panel-box-shadow: #{$panel-box-shadow};
+  --bs-handle-color: #{$handle-color};
+  
+  // sizing
+  --bs-panel-height: #{$panel-height};
+  --bs-panel-top-position: #{$panel-top-position};
+  --bs-panel-border-radius: #{$panel-border-radius};
+  --bs-handle-width: #{$handle-width};
+  --bs-handle-height: #{$handle-height};
+  
+  // spacing
+  --bs-content-padding: #{$content-padding};
+  
+  // z-index
+  --bs-z-index-overlay: #{$z-index-overlay};
+  --bs-z-index-panel: #{$z-index-panel};
+  
+  // animation
+  --bs-transition-duration: #{$transition-duration};
+  --bs-transition-timing: #{$transition-timing};
+  --bs-transition-blur: #{$transition-blur};
+}

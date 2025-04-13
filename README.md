@@ -83,26 +83,47 @@ Or include directly in your HTML:
 
 ### Styling
 
-You can style the Bottom Sheet by overriding or extending the provided CSS:
+You can style the Bottom Sheet using CSS custom properties:
 
 ```css
-bottom-sheet {
-  /* Customize your bottom sheet */
+:root {
+  /* Colors */
+  --bs-overlay-background: rgba(0, 0, 0, 0.7); /* Darker overlay */
+  --bs-panel-background: #f8f8f8; /* Light gray panel */
+  --bs-handle-color: #999; /* Darker handle */
+  
+  /* Sizing */
+  --bs-panel-height: 70vh; /* Shorter panel */
+  --bs-panel-top-position: 30vh; /* Start higher */
+  --bs-panel-border-radius: 16px; /* Smaller border radius */
+  
+  /* Animation */
+  --bs-transition-duration: 250ms; /* Faster animation */
+  --bs-transition-blur: 3px; /* Less blur */
 }
+```
 
-bottom-sheet-header {
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 18px;
-}
+### SCSS Integration
 
-.bottom-sheet-button-panel button {
-  flex: 1;
-  appearance: none;
-  background: white;
-  border-radius: 5px;
-  padding: 8px;
-  font-family: Helvetica, Arial, sans-serif;
-}
+For more advanced customization, you can import the SCSS directly:
+
+```scss
+// Option 1: Import the compiled CSS
+@import '@magic-spells/bottom-sheet/css';
+
+// Option 2: Import the SCSS and override variables
+@use '@magic-spells/bottom-sheet/scss' with (
+  $panel-height: 70vh,
+  $panel-top-position: 30vh,
+  $overlay-background: rgba(0, 0, 0, 0.7),
+  $transition-duration: 250ms
+);
+
+// Option 3: Import specific parts
+@use '@magic-spells/bottom-sheet/scss/variables' with (
+  $panel-border-radius: 16px
+);
+@use '@magic-spells/bottom-sheet/scss/bottom-sheet';
 ```
 
 ### JavaScript API

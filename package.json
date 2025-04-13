@@ -1,6 +1,6 @@
 {
   "name": "@magic-spells/bottom-sheet",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Bottom sheet web component.",
   "author": "Cory Schulz",
   "license": "MIT",
@@ -9,13 +9,17 @@
   "module": "dist/bottom-sheet.esm.js",
   "unpkg": "dist/bottom-sheet.min.js",
   "style": "dist/bottom-sheet.min.css",
+  "sass": "dist/bottom-sheet.scss",
   "exports": {
     ".": {
       "import": "./dist/bottom-sheet.esm.js",
       "require": "./dist/bottom-sheet.cjs.js",
       "default": "./dist/bottom-sheet.esm.js"
     },
-    "./style.css": "./dist/bottom-sheet.min.css"
+    "./css": "./dist/bottom-sheet.css",
+    "./css/min": "./dist/bottom-sheet.min.css",
+    "./scss": "./dist/bottom-sheet.scss",
+    "./scss/*": "./dist/scss/*"
   },
   "sideEffects": true,
   "repository": {
@@ -65,6 +69,7 @@
     "rollup": "^3.0.0",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-postcss": "^4.0.2",
-    "rollup-plugin-serve": "^1.1.1"
+    "rollup-plugin-serve": "^1.1.1",
+    "sass": "^1.86.3"
   }
 }

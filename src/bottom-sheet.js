@@ -1,4 +1,4 @@
-import './bottom-sheet.css';
+import './index.scss';
 
 const throttle = (func, limit) => {
   let inThrottle;

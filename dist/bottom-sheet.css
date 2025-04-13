@@ -1,0 +1,93 @@
+:root {
+  --bs-overlay-background: rgba(0, 0, 0, 0.5);
+  --bs-panel-background: white;
+  --bs-panel-box-shadow: 0 1px 20px -4px rgba(0, 0, 0, 0.3), 0 0 7px 0 rgba(0, 0, 0, 0.1);
+  --bs-handle-color: #bbb;
+  --bs-panel-height: 85vh;
+  --bs-panel-top-position: 15vh;
+  --bs-panel-border-radius: 25px;
+  --bs-handle-width: 50px;
+  --bs-handle-height: 5px;
+  --bs-content-padding: 20px;
+  --bs-z-index-overlay: 999;
+  --bs-z-index-panel: 1000;
+  --bs-transition-duration: 300ms;
+  --bs-transition-timing: ease;
+  --bs-transition-blur: 5px;
+}
+
+bottom-sheet > bottom-sheet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100%;
+  background: var(--bs-overlay-background, rgba(0, 0, 0, 0.5));
+  box-sizing: border-box;
+  transition: background var(--bs-transition-duration, 400ms) var(--bs-transition-timing, ease);
+  backdrop-filter: blur(var(--bs-transition-blur, 5px));
+  z-index: var(--bs-z-index-overlay, 999);
+}
+
+bottom-sheet[aria-hidden=true] bottom-sheet-overlay {
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: none;
+}
+
+bottom-sheet-header {
+  padding: 0 var(--bs-content-padding, 20px);
+  position: relative;
+}
+bottom-sheet-header::before {
+  content: "";
+  display: block;
+  background: var(--bs-handle-color, #bbb);
+  height: var(--bs-handle-height, 5px);
+  width: var(--bs-handle-width, 50px);
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: var(--bs-handle-height, 5px);
+}
+
+bottom-sheet-panel {
+  background: var(--bs-panel-background, white);
+  box-sizing: border-box;
+  border-top-left-radius: var(--bs-panel-border-radius, 25px);
+  border-top-right-radius: var(--bs-panel-border-radius, 25px);
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  top: var(--bs-panel-top-position, 15vh);
+  left: 0;
+  overflow: hidden;
+  box-shadow: var(--bs-panel-box-shadow, 0 1px 20px -4px rgba(0, 0, 0, 0.3), 0 0 7px 0 rgba(0, 0, 0, 0.1));
+  will-change: transform;
+  height: var(--bs-panel-height, 85vh);
+  transition: none;
+  z-index: var(--bs-z-index-panel, 1000);
+}
+bottom-sheet-panel.transitioning {
+  transition: transform var(--bs-transition-duration, 300ms) var(--bs-transition-timing, ease);
+}
+
+bottom-sheet[aria-hidden=true] bottom-sheet-panel {
+  transform: translate3d(0, 100%, 0);
+}
+
+bottom-sheet[aria-hidden=false] bottom-sheet-panel {
+  transform: translate3d(0, 0, 0);
+}
+
+bottom-sheet-content {
+  box-sizing: border-box;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--bs-content-padding, 20px);
+  flex: 1;
+}
+
+/*# sourceMappingURL=true */
