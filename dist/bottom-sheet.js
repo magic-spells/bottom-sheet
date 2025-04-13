@@ -1,7 +1,8 @@
-(function (factory) {
-  typeof define === 'function' && define.amd ? define(factory) :
-  factory();
-})((function () { 'use strict';
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.BottomSheet = {}));
+})(this, (function (exports) { 'use strict';
 
   const throttle = (func, limit) => {
     let inThrottle;
@@ -26,8 +27,13 @@
     #handleOverlayClick;
     #handleWindowResize;
     
+    // Physics constants
+    #overscrollResistance = 0.1; // Lower = more resistance when pulling beyond limits
+    #dragThreshold = 100; // Distance in pixels needed to dismiss by dragging
+    
     // Private backing fields for properties
     #maxDisplayWidth = Infinity; // Default: no limit (always show)
+    #scrollPosition = 0; // For saving scroll position when locking body scroll
     
     /**
      * Define which attributes should be observed for changes
@@ -89,15 +95,8 @@
         const parsed = parseInt(attrWidth);
         _.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
       } else {
-        // For backward compatibility, check dataset
-        const datasetWidth = _.dataset.maxWidth;
-        if (datasetWidth) {
-          const parsed = parseInt(datasetWidth);
-          _.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
-        } else {
-          // Default: Infinity (no limit)
-          _.maxDisplayWidth = Infinity;
-        }
+        // Default: Infinity (no limit)
+        _.maxDisplayWidth = Infinity;
       }
 
       // Set default drag properties
@@ -107,10 +106,10 @@
         currentY: 0,
         endY: 0,
         delta: 0,
+        direction: null, // 'up', 'down', or null when not dragging
       };
 
-      // Drag threshold
-      _.threshold = 100;
+      // Using private field for threshold, no need to reassign here
 
       // Get panel elements
       _.panel = _.querySelector(':scope > bottom-sheet-panel');
@@ -125,10 +124,9 @@
       this.#handleTransitionEnd = this.handleTransitionEnd.bind(this);
       this.#handleOverlayClick = this.hide.bind(this);
 
-      // Add resize handler with throttle and debounce
+      // Add resize handler with throttle
       this.#handleWindowResize = throttle(
         () => {
-          console.log('window resize throttle');
           if (window.innerWidth > _.maxDisplayWidth) {
             _.hide();
           }
@@ -157,10 +155,6 @@
     }
 
     /**
-     * Binds the necessary UI events to the component
-     */
-
-    /**
      * Handles keydown events for accessibility
      * @param {KeyboardEvent} e - The keyboard event
      */
@@ -172,6 +166,9 @@
       }
     };
 
+    /**
+     * Binds all necessary event listeners to the component
+     */
     bindUI() {
       const _ = this;
 
@@ -257,21 +254,24 @@
       document.removeEventListener('keydown', this.#handleKeyDown);
     }
 
+    /**
+     * Toggles body scrolling on/off when the bottom sheet is shown/hidden
+     * @param {boolean} disable - Whether to disable body scrolling
+     */
     toggleBodyScroll(disable) {
-      const _ = this;
       if (disable) {
-        _.scrollPosition = window.pageYOffset;
+        this.#scrollPosition = window.pageYOffset;
         document.body.style.overflow = 'hidden';
         document.body.style.position = 'fixed';
-        document.body.style.top = `-${_.scrollPosition}px`;
+        document.body.style.top = `-${this.#scrollPosition}px`;
         document.body.style.width = '100%';
       } else {
         document.body.style.removeProperty('overflow');
         document.body.style.removeProperty('position');
         document.body.style.removeProperty('top');
         document.body.style.removeProperty('width');
-        window.scrollTo(0, _.scrollPosition);
-        _.scrollPosition = 0;
+        window.scrollTo(0, this.#scrollPosition);
+        this.#scrollPosition = 0;
       }
     }
 
@@ -280,7 +280,7 @@
       const drag = _.drag;
 
       drag.startY = e.targetTouches[0].screenY;
-      drag.direction = false;
+      drag.direction = null; // Reset direction for new drag
       drag.delta = 0;
 
       _.panel.classList.remove('transitioning');
@@ -297,12 +297,11 @@
     /**
      * Applies resistance to a drag value to create a rubber-band effect
      * @param {number} value - The raw drag distance
-     * @param {number} resistanceFactor - Lower = more resistance (0.1-0.5 recommended)
      * @returns {number} - The drag with resistance applied
      */
-    #applyResistance(value, resistanceFactor = 0.3) {
+    #applyResistance(value) {
       // Square root provides a nice feel (more resistance as you drag further)
-      return Math.sqrt(value) * 10 * resistanceFactor;
+      return Math.sqrt(value) * 10 * this.#overscrollResistance;
     }
 
     panelDragMove(e) {
@@ -314,40 +313,44 @@
       drag.currentY = e.targetTouches[0].screenY;
       drag.delta = drag.currentY - drag.startY;
 
+      // Initial direction detection
       if (!drag.direction) {
+        // We need to determine if we're moving up or down
         if (drag.delta < 0) {
-          drag.isDragging = false;
-          return;
+          // We're moving upward (negative delta)
+          drag.direction = 'up';
+        } else {
+          // We're moving downward (positive delta)
+          drag.direction = 'down';
         }
-        drag.direction = true;
       }
 
+      // Handle upward movement (negative delta) - pulling beyond top position
       if (drag.delta < 0) {
-        // For upward drag, apply resistance in the opposite direction
-        // This creates a subtle stretchy effect when trying to pull the sheet up
-        const resistedDelta = this.#applyResistance(Math.abs(drag.delta), 0.1);
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        
+        // Apply strong resistance to upward movement
+        // This makes it hard to pull the sheet beyond its natural top position
+        const absValue = Math.abs(drag.delta);
+        const resistedDelta = this.#applyResistance(absValue); // Use internal resistance constant
+        
+        // Convert back to negative (upward movement)
         _.panel.style.transform = `translate3d(0,${-resistedDelta}px,0)`;
         return;
       }
 
+      // Handle downward movement (positive delta) - dismissing
       if (drag.delta > 0) {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
         
-        // For downward drag, apply increasing resistance as user drags further
-        // For first 100px, use actual distance, then apply rubber-banding
-        const threshold = 100;
-        let transformY;
+        // For downward drag, use natural movement with no resistance
+        // This feels like a normal draggable surface with no stretchy effect
+        _.panel.style.transform = `translate3d(0,${drag.delta}px,0)`;
         
-        if (drag.delta <= threshold) {
-          transformY = drag.delta;
-        } else {
-          const overshoot = drag.delta - threshold;
-          const resistance = this.#applyResistance(overshoot, 0.3);
-          transformY = threshold + resistance;
-        }
-        
-        _.panel.style.transform = `translate3d(0,${transformY}px,0)`;
+        // Visual feedback when passing threshold (subtle)
+        if (drag.delta > this.#dragThreshold) ;
       }
     }
 
@@ -359,13 +362,28 @@
 
       drag.isDragging = false;
 
-      if (drag.delta > _.threshold) {
+      // Add the transitioning class to ensure smooth animation back to position
+      _.panel.classList.add('transitioning');
+      
+      // Handle negative delta (upward drag attempts) - always snap back to normal
+      if (drag.delta < 0) {
         drag.delta = 0;
+        drag.direction = null; // Reset direction for next drag
+        _.show(); // This resets transform to normal position
+        return;
+      }
+
+      // For downward drags, check if we've passed the dismissal threshold
+      if (drag.delta > this.#dragThreshold) {
+        drag.delta = 0;
+        drag.direction = null; // Reset direction for next drag
         _.hide();
         return;
       }
 
+      // Otherwise snap back to normal position
       drag.delta = 0;
+      drag.direction = null; // Reset direction for next drag
       _.show();
     }
 
@@ -450,7 +468,11 @@
   customElements.define('bottom-sheet-overlay', BottomSheetOverlay);
   customElements.define('bottom-sheet-header', BottomSheetHeader);
 
-  // export { BottomSheet, BottomSheetPanel, BottomSheetContent, BottomSheetOverlay, BottomSheetHeader };
+  exports.BottomSheet = BottomSheet;
+  exports.BottomSheetContent = BottomSheetContent;
+  exports.BottomSheetHeader = BottomSheetHeader;
+  exports.BottomSheetOverlay = BottomSheetOverlay;
+  exports.BottomSheetPanel = BottomSheetPanel;
 
 }));
 //# sourceMappingURL=bottom-sheet.js.map
