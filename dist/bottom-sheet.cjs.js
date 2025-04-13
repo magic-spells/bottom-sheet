@@ -22,6 +22,7 @@ class BottomSheet extends HTMLElement {
   #handleTransitionEnd;
   #handleOverlayClick;
   #handleWindowResize;
+  #handleActionClick;
 
   // Physics constants
   #overscrollResistance = 0.1; // Lower = more resistance when pulling beyond limits
@@ -122,6 +123,16 @@ class BottomSheet extends HTMLElement {
     _.#handleTransitionEnd = _.handleTransitionEnd.bind(this);
     _.#handleOverlayClick = _.hide.bind(this);
 
+    // Handler for close buttons with data-action="close-bottom-sheet"
+    _.#handleActionClick = (e) => {
+      // Check if the clicked element or any of its parents has the close action
+      const closeButton = e.target.closest('[data-action="close-bottom-sheet"]');
+      if (closeButton) {
+        e.preventDefault();
+        _.hide();
+      }
+    };
+
     // Add resize handler with throttle
     _.#handleWindowResize = throttle(
       () => {
@@ -134,7 +145,6 @@ class BottomSheet extends HTMLElement {
 
     // Set ARIA attributes and bind UI
     _.setupAriaAttributes();
-    _.bindUI();
   }
 
   /**
@@ -171,6 +181,8 @@ class BottomSheet extends HTMLElement {
   bindUI() {
     const _ = this;
 
+    window.addEventListener('resize', _.#handleWindowResize);
+
     // Bind touch events for header
     if (_.header) {
       _.header.addEventListener('touchstart', _.#handleTouchStart, true);
@@ -196,9 +208,11 @@ class BottomSheet extends HTMLElement {
       _.overlay.addEventListener('click', _.#handleOverlayClick);
     }
 
-    // Transition end handler
     if (_.panel) {
+      // Transition end handler
       _.panel.addEventListener('transitionend', _.#handleTransitionEnd);
+      // Add support for close buttons with data-action="close-bottom-sheet"
+      _.panel.addEventListener('click', _.#handleActionClick);
     }
 
     // Add keyboard support
@@ -207,7 +221,9 @@ class BottomSheet extends HTMLElement {
 
   connectedCallback() {
     const _ = this;
-    window.addEventListener('resize', _.#handleWindowResize);
+
+    // attach event listeners
+    _.bindUI();
 
     // Initial check
     if (window.innerWidth > _.maxDisplayWidth) {
@@ -248,6 +264,7 @@ class BottomSheet extends HTMLElement {
 
     if (_.panel) {
       _.panel.removeEventListener('transitionend', _.#handleTransitionEnd);
+      _.panel.removeEventListener('click', _.#handleActionClick);
     }
 
     // Remove keyboard listener
