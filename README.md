@@ -2,6 +2,8 @@
 
 A lightweight, customizable Web Component for creating accessible bottom sheets. Perfect for mobile-friendly modals, menus, or interactive panels that slide in from the bottom of the screen.
 
+[**Live Demo**](https://magic-spells.github.io/bottom-sheet/demo/)
+
 ## Features
 
 - No dependencies
@@ -32,17 +34,11 @@ Or include directly in your HTML:
 ## Usage
 
 ```html
-<button
-  id="show-bottom-sheet-button"
-  aria-controls="bottom-sheet"
-  aria-expanded="false">
+<button id="show-bottom-sheet-button" aria-controls="bottom-sheet" aria-expanded="false">
   Show Bottom Sheet
 </button>
 
-<bottom-sheet 
-  id="bottom-sheet" 
-  aria-hidden="true"
-  max-display-width="768">
+<bottom-sheet id="bottom-sheet" aria-hidden="true" max-display-width="768">
   <bottom-sheet-overlay></bottom-sheet-overlay>
 
   <bottom-sheet-panel>
@@ -88,12 +84,13 @@ Or include directly in your HTML:
 
 The bottom sheet can be configured using the following attributes:
 
-| Attribute | Description | Default |
-|-----------|-------------|---------|
-| `max-display-width` | Maximum viewport width in pixels at which the bottom sheet is displayed. If the viewport is wider, the sheet will automatically hide. Omit this attribute to show on all screen sizes. | None (no limit) |
-| `aria-label` | Accessible label for the bottom sheet. | "Bottom sheet content" |
+| Attribute           | Description                                                                                                                                                                            | Default                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `max-display-width` | Maximum viewport width in pixels at which the bottom sheet is displayed. If the viewport is wider, the sheet will automatically hide. Omit this attribute to show on all screen sizes. | None (no limit)        |
+| `aria-label`        | Accessible label for the bottom sheet.                                                                                                                                                 | "Bottom sheet content" |
 
 Example:
+
 ```html
 <!-- Bottom sheet that only shows on mobile devices -->
 <bottom-sheet max-display-width="600" aria-label="Mobile menu">
@@ -118,15 +115,14 @@ You can style the Bottom Sheet using CSS custom properties:
   --bs-overlay-background: rgba(0, 0, 0, 0.7); /* Darker overlay */
   --bs-panel-background: #f8f8f8; /* Light gray panel */
   --bs-handle-color: #999; /* Darker handle */
-  
+
   /* Sizing */
   --bs-panel-height: 70vh; /* Shorter panel */
   --bs-panel-top-position: 30vh; /* Start higher */
   --bs-panel-border-radius: 16px; /* Smaller border radius */
-  
+
   /* Animation */
   --bs-transition-duration: 250ms; /* Faster animation */
-  --bs-transition-blur: 3px; /* Less blur */
 }
 ```
 

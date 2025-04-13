@@ -3,6 +3,7 @@
   --bs-panel-background: white;
   --bs-panel-box-shadow: 0 1px 20px -4px rgba(0, 0, 0, 0.3), 0 0 7px 0 rgba(0, 0, 0, 0.1);
   --bs-handle-color: #bbb;
+  --bs-overlay-blur: 5px;
   --bs-panel-height: 85vh;
   --bs-panel-top-position: 15vh;
   --bs-panel-border-radius: 25px;
@@ -13,7 +14,6 @@
   --bs-z-index-panel: 1000;
   --bs-transition-duration: 300ms;
   --bs-transition-timing: ease;
-  --bs-transition-blur: 5px;
 }
 
 bottom-sheet > bottom-sheet-overlay {
@@ -25,7 +25,7 @@ bottom-sheet > bottom-sheet-overlay {
   background: var(--bs-overlay-background, rgba(0, 0, 0, 0.5));
   box-sizing: border-box;
   transition: background var(--bs-transition-duration, 400ms) var(--bs-transition-timing, ease);
-  backdrop-filter: blur(var(--bs-transition-blur, 5px));
+  backdrop-filter: blur(var(--bs-overlay-blur, 5px));
   z-index: var(--bs-z-index-overlay, 999);
 }
 
@@ -75,7 +75,7 @@ bottom-sheet-panel.transitioning {
 }
 
 bottom-sheet[aria-hidden=true] bottom-sheet-panel {
-  transform: translate3d(0, 100%, 0);
+  transform: translate3d(0, 115%, 0);
 }
 
 bottom-sheet[aria-hidden=false] bottom-sheet-panel {

@@ -14,6 +14,9 @@ $panel-box-shadow:
   0 0 7px 0 rgba(0, 0, 0, 0.1) !default;
 $handle-color: #bbb !default;
 
+// overlay
+$overlay-blur: 5px !default;
+
 // sizing
 $panel-height: 85vh !default;
 $panel-top-position: 15vh !default;
@@ -27,7 +30,6 @@ $content-padding: 20px !default;
 // animation
 $transition-duration: 300ms !default;
 $transition-timing: ease !default;
-$transition-blur: 5px !default;
 
 // Define CSS Custom Properties (variables) using the SCSS values as defaults
 :root {
@@ -36,6 +38,9 @@ $transition-blur: 5px !default;
   --bs-panel-background: #{$panel-background};
   --bs-panel-box-shadow: #{$panel-box-shadow};
   --bs-handle-color: #{$handle-color};
+
+  // overlay
+  --bs-overlay-blur: #{$overlay-blur};
 
   // sizing
   --bs-panel-height: #{$panel-height};
@@ -54,5 +59,4 @@ $transition-blur: 5px !default;
   // animation
   --bs-transition-duration: #{$transition-duration};
   --bs-transition-timing: #{$transition-timing};
-  --bs-transition-blur: #{$transition-blur};
 }

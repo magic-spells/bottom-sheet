@@ -10,7 +10,7 @@ bottom-sheet > bottom-sheet-overlay {
   background: var(--bs-overlay-background, rgba(0, 0, 0, 0.5));
   box-sizing: border-box;
   transition: background var(--bs-transition-duration, 400ms) var(--bs-transition-timing, ease);
-  backdrop-filter: blur(var(--bs-transition-blur, 5px));
+  backdrop-filter: blur(var(--bs-overlay-blur, 5px));
   z-index: var(--bs-z-index-overlay, 999);
 }
 
@@ -66,7 +66,7 @@ bottom-sheet-panel {
 }
 
 bottom-sheet[aria-hidden='true'] bottom-sheet-panel {
-  transform: translate3d(0, 100%, 0);
+  transform: translate3d(0, 115%, 0);
 }
 
 bottom-sheet[aria-hidden='false'] bottom-sheet-panel {
