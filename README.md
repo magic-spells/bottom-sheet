@@ -39,7 +39,10 @@ Or include directly in your HTML:
   Show Bottom Sheet
 </button>
 
-<bottom-sheet id="bottom-sheet" aria-hidden="true">
+<bottom-sheet 
+  id="bottom-sheet" 
+  aria-hidden="true"
+  max-display-width="768">
   <bottom-sheet-overlay></bottom-sheet-overlay>
 
   <bottom-sheet-panel>
@@ -75,9 +78,32 @@ Or include directly in your HTML:
 ## How It Works
 
 - The bottom sheet is initially hidden (aria-hidden="true").
-- Clicking the “Show Bottom Sheet” button will call the show() method, making the bottom sheet visible.
+- Clicking the "Show Bottom Sheet" button will call the show() method, making the bottom sheet visible.
 - You can drag the sheet down to close it or click the background overlay.
 - The hide() method is used to programmatically close the bottom sheet.
+- The sheet automatically hides on screens wider than the specified max-display-width (if provided).
+
+## Configuration
+
+The bottom sheet can be configured using the following attributes:
+
+| Attribute | Description | Default |
+|-----------|-------------|---------|
+| `max-display-width` | Maximum viewport width in pixels at which the bottom sheet is displayed. If the viewport is wider, the sheet will automatically hide. Omit this attribute to show on all screen sizes. | None (no limit) |
+| `aria-label` | Accessible label for the bottom sheet. | "Bottom sheet content" |
+
+Example:
+```html
+<!-- Bottom sheet that only shows on mobile devices -->
+<bottom-sheet max-display-width="600" aria-label="Mobile menu">
+  <!-- content -->
+</bottom-sheet>
+
+<!-- Bottom sheet that shows on all screen sizes -->
+<bottom-sheet aria-label="Universal menu">
+  <!-- content -->
+</bottom-sheet>
+```
 
 ## Customization
 
@@ -133,7 +159,31 @@ For more advanced customization, you can import the SCSS directly:
 - `show()`: Opens the bottom sheet.
 - `hide()`: Closes the bottom sheet.
 
-#### Event Listeners
+#### Keyboard Support
+
+- `Escape` key: Closes the bottom sheet when open.
+
+#### Custom Events
+
+The component fires the following custom events:
+
+- `bottomsheet:open`: Fired when the bottom sheet is opened.
+- `bottomsheet:close`: Fired when the bottom sheet is closed.
+
+```javascript
+// Example usage
+const sheet = document.getElementById('my-bottom-sheet');
+
+sheet.addEventListener('bottomsheet:open', (e) => {
+  console.log('Bottom sheet opened', e.detail.sheet);
+});
+
+sheet.addEventListener('bottomsheet:close', (e) => {
+  console.log('Bottom sheet closed', e.detail.sheet);
+});
+```
+
+#### Touch Events
 
 You can listen for specific touch events on the header, content, or overlay to customize behavior.
 

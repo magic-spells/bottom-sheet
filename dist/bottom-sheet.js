@@ -25,6 +25,57 @@
     #handleTransitionEnd;
     #handleOverlayClick;
     #handleWindowResize;
+    
+    // Private backing fields for properties
+    #maxDisplayWidth = Infinity; // Default: no limit (always show)
+    
+    /**
+     * Define which attributes should be observed for changes
+     */
+    static get observedAttributes() {
+      return ['max-display-width'];
+    }
+    
+    /**
+     * Called when observed attributes change
+     */
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (oldValue === newValue) return;
+      
+      if (name === 'max-display-width') {
+        if (newValue === null || newValue === 'none') {
+          // No limit
+          this.maxDisplayWidth = Infinity;
+        } else {
+          // Parse as number or default to Infinity if not a valid number
+          const parsed = parseInt(newValue);
+          this.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
+        }
+      }
+    }
+    
+    /**
+     * Get the maximum display width
+     * @return {number} The maximum width in pixels where the bottom sheet is shown
+     */
+    get maxDisplayWidth() {
+      return this.#maxDisplayWidth;
+    }
+    
+    /**
+     * Set the maximum display width and reflect to attribute
+     * @param {number} value - The maximum width in pixels where the bottom sheet is shown
+     */
+    set maxDisplayWidth(value) {
+      this.#maxDisplayWidth = value;
+      
+      // Don't set the attribute to "Infinity" in HTML
+      if (value === Infinity) {
+        this.removeAttribute('max-display-width');
+      } else {
+        this.setAttribute('max-display-width', value);
+      }
+    }
 
     constructor() {
       super();
@@ -32,8 +83,22 @@
 
       _.setAttribute('aria-hidden', true);
 
-      // Add maxWidth property with default using dataset API
-      _.maxWidth = parseInt(_.dataset.maxWidth) || 768;
+      // Initialize maxDisplayWidth from attribute or use default (Infinity = no limit)
+      const attrWidth = _.getAttribute('max-display-width');
+      if (attrWidth !== null && attrWidth !== 'none') {
+        const parsed = parseInt(attrWidth);
+        _.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
+      } else {
+        // For backward compatibility, check dataset
+        const datasetWidth = _.dataset.maxWidth;
+        if (datasetWidth) {
+          const parsed = parseInt(datasetWidth);
+          _.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
+        } else {
+          // Default: Infinity (no limit)
+          _.maxDisplayWidth = Infinity;
+        }
+      }
 
       // Set default drag properties
       _.drag = {
@@ -64,7 +129,7 @@
       this.#handleWindowResize = throttle(
         () => {
           console.log('window resize throttle');
-          if (window.innerWidth > _.maxWidth) {
+          if (window.innerWidth > _.maxDisplayWidth) {
             _.hide();
           }
         },
@@ -94,6 +159,19 @@
     /**
      * Binds the necessary UI events to the component
      */
+
+    /**
+     * Handles keydown events for accessibility
+     * @param {KeyboardEvent} e - The keyboard event
+     */
+    #handleKeyDown = (e) => {
+      // Close on escape key press
+      if (e.key === 'Escape' && this.getAttribute('aria-hidden') === 'false') {
+        e.preventDefault();
+        this.hide();
+      }
+    };
+
     bindUI() {
       const _ = this;
 
@@ -126,13 +204,16 @@
       if (_.panel) {
         _.panel.addEventListener('transitionend', this.#handleTransitionEnd);
       }
+
+      // Add keyboard support
+      document.addEventListener('keydown', this.#handleKeyDown);
     }
 
     connectedCallback() {
       window.addEventListener('resize', this.#handleWindowResize);
 
       // Initial check
-      if (window.innerWidth > this.maxWidth) {
+      if (window.innerWidth > this.maxDisplayWidth) {
         this.hide();
       }
     }
@@ -171,6 +252,9 @@
       if (_.panel) {
         _.panel.removeEventListener('transitionend', this.#handleTransitionEnd);
       }
+      
+      // Remove keyboard listener
+      document.removeEventListener('keydown', this.#handleKeyDown);
     }
 
     toggleBodyScroll(disable) {
@@ -210,6 +294,17 @@
       }
     }
 
+    /**
+     * Applies resistance to a drag value to create a rubber-band effect
+     * @param {number} value - The raw drag distance
+     * @param {number} resistanceFactor - Lower = more resistance (0.1-0.5 recommended)
+     * @returns {number} - The drag with resistance applied
+     */
+    #applyResistance(value, resistanceFactor = 0.3) {
+      // Square root provides a nice feel (more resistance as you drag further)
+      return Math.sqrt(value) * 10 * resistanceFactor;
+    }
+
     panelDragMove(e) {
       const _ = this;
       const drag = _.drag;
@@ -228,16 +323,32 @@
       }
 
       if (drag.delta < 0) {
-        _.panel.style.transform = 'translate3d(0,0,0)';
+        // For upward drag, apply resistance in the opposite direction
+        // This creates a subtle stretchy effect when trying to pull the sheet up
+        const resistedDelta = this.#applyResistance(Math.abs(drag.delta), 0.1);
+        _.panel.style.transform = `translate3d(0,${-resistedDelta}px,0)`;
         return;
       }
 
       if (drag.delta > 0) {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
+        
+        // For downward drag, apply increasing resistance as user drags further
+        // For first 100px, use actual distance, then apply rubber-banding
+        const threshold = 100;
+        let transformY;
+        
+        if (drag.delta <= threshold) {
+          transformY = drag.delta;
+        } else {
+          const overshoot = drag.delta - threshold;
+          const resistance = this.#applyResistance(overshoot, 0.3);
+          transformY = threshold + resistance;
+        }
+        
+        _.panel.style.transform = `translate3d(0,${transformY}px,0)`;
       }
-
-      _.panel.style.transform = `translate3d(0,${drag.delta}px,0)`;
     }
 
     panelDragEnd(e) {
@@ -264,11 +375,14 @@
       }
     }
 
+    /**
+     * Shows the bottom sheet and dispatches an open event
+     */
     show() {
       const _ = this;
 
-      // Don't show if width is above max or was closed by resize
-      if (window.innerWidth > _.maxWidth) {
+      // Don't show if width is above max display width or was closed by resize
+      if (window.innerWidth > _.maxDisplayWidth) {
         return;
       }
 
@@ -277,8 +391,17 @@
       _.panel.classList.add('transitioning');
       _.panel.style.transform = null;
       _.toggleBodyScroll(true);
+      
+      // Dispatch custom event
+      this.dispatchEvent(new CustomEvent('bottomsheet:open', {
+        bubbles: true,
+        detail: { sheet: this }
+      }));
     }
 
+    /**
+     * Hides the bottom sheet and dispatches a close event
+     */
     hide() {
       const _ = this;
       _.setAttribute('aria-hidden', 'true');
@@ -286,6 +409,12 @@
       _.panel.classList.add('transitioning');
       _.panel.style.transform = null;
       _.toggleBodyScroll(false);
+      
+      // Dispatch custom event
+      this.dispatchEvent(new CustomEvent('bottomsheet:close', {
+        bubbles: true,
+        detail: { sheet: this }
+      }));
     }
   }
 
