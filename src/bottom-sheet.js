@@ -18,20 +18,6 @@ const throttle = (func, limit) => {
 };
 
 /**
- * A debounce utility function that delays invoking a function
- * @param {Function} func - The function to debounce
- * @param {number} wait - The time delay in ms
- * @returns {Function} A debounced function
- */
-const debounce = (func, wait) => {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-};
-
-/**
  * BottomSheet class that handles the functionality of a bottom sheet component
  */
 class BottomSheet extends HTMLElement {
@@ -424,6 +410,7 @@ class BottomSheet extends HTMLElement {
    * Fired when a touch event ends on the panel
    * @param {TouchEvent} e - The touch event
    */
+  // eslint-disable-next-line no-unused-vars
   panelDragEnd(e) {
     const _ = this;
     const drag = _.drag;

@@ -412,6 +412,7 @@
      * Fired when a touch event ends on the panel
      * @param {TouchEvent} e - The touch event
      */
+    // eslint-disable-next-line no-unused-vars
     panelDragEnd(e) {
       const _ = this;
       const drag = _.drag;
