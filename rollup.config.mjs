@@ -7,6 +7,9 @@ import postcss from 'rollup-plugin-postcss';
 const dev = process.env.ROLLUP_WATCH;
 const name = 'bottom-sheet';
 
+// External dependencies that should not be bundled
+const external = ['@magic-spells/focus-trap'];
+
 // Shared CSS/SCSS plugin config
 const cssPlugin = postcss({
   extract: `${name}.css`,
@@ -37,6 +40,7 @@ export default [
   // ESM build
   {
     input: 'src/bottom-sheet.js',
+    external,
     output: {
       file: `dist/${name}.esm.js`,
       format: 'es',
@@ -51,6 +55,7 @@ export default [
   // CommonJS build
   {
     input: 'src/bottom-sheet.js',
+    external,
     output: {
       file: `dist/${name}.cjs.js`,
       format: 'cjs',
@@ -95,6 +100,7 @@ export default [
     ? [
         {
           input: 'src/bottom-sheet.js',
+          external,
           output: {
             file: `dist/${name}.esm.js`,
             format: 'es',

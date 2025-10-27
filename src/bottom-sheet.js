@@ -149,9 +149,9 @@ class BottomSheet extends HTMLElement {
         }
       }, 100),
       actionClick: (e) => {
-        // check if the clicked element or any of its parents has the close action
-        const closeButton = e.target.closest('[data-action="hide-bottom-sheet"]');
-        if (closeButton) {
+        // check if the clicked element or any of its parents has the hide action
+        const hideButton = e.target.closest('[data-action-hide-bottom-sheet]');
+        if (hideButton) {
           e.preventDefault();
           _.hide();
         }

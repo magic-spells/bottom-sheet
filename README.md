@@ -57,7 +57,7 @@ Or include directly in your HTML:
     </bottom-sheet-content>
 
     <div class="bottom-sheet-button-panel">
-      <button data-action="close-bottom-sheet">Cancel</button>
+      <button data-action-hide-bottom-sheet>Cancel</button>
       <button>Apply</button>
     </div>
   </bottom-sheet-panel>
@@ -78,7 +78,7 @@ Or include directly in your HTML:
 - You can drag the sheet down to close it or click the background overlay.
 - The hide() method is used to programmatically close the bottom sheet.
 - The sheet automatically hides on screens wider than the specified max-display-width (if provided).
-- Any element within the bottom sheet with a `data-action="close-bottom-sheet"` attribute will close the sheet when clicked.
+- Any element within the bottom sheet with a `data-action-hide-bottom-sheet` attribute will close the sheet when clicked.
 
 ## Configuration
 
