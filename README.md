@@ -6,101 +6,108 @@ A lightweight, customizable Web Component for creating accessible bottom sheets.
 
 ## Features
 
-- No dependencies
-- Lightweight
-- Follows accessibility best practices
-- Smooth open/close animations
-- Supports touch gestures for drag-to-close
-- Handles Escape key for closing
-- Uses aria attributes for accessibility
+- Built on `@magic-spells/dialog-panel` for native `<dialog>` accessibility
+- Smooth open/close animations with state-driven CSS
+- Touch gestures for drag-to-close with rubber-band physics
+- Escape key handling via native `<dialog>`
+- Focus trapping via `showModal()`
+- Customizable with CSS custom properties
 
 ## Installation
 
 ```bash
-npm install @magic-spells/bottom-sheet
+npm install @magic-spells/bottom-sheet @magic-spells/dialog-panel
 ```
 
 ```javascript
 // Add to your JavaScript file
+import '@magic-spells/dialog-panel';
 import '@magic-spells/bottom-sheet';
 ```
 
 Or include directly in your HTML:
 
 ```html
+<script src="https://unpkg.com/@magic-spells/dialog-panel"></script>
 <script src="https://unpkg.com/@magic-spells/bottom-sheet"></script>
 ```
 
 ## Usage
 
 ```html
-<button id="show-bottom-sheet-button" aria-controls="bottom-sheet" aria-expanded="false">
-	Show Bottom Sheet
-</button>
+<button id="show-bottom-sheet-button">Show Bottom Sheet</button>
 
-<bottom-sheet id="bottom-sheet" aria-hidden="true" max-display-width="768">
-	<bottom-sheet-overlay></bottom-sheet-overlay>
+<dialog-panel id="sheet-dialog">
+	<dialog>
+		<bottom-sheet max-display-width="768">
+			<bottom-sheet-header>
+				<div style="padding-top: 12px">
+					<h4 style="margin: 0; padding: 8px 0">Header</h4>
+				</div>
+			</bottom-sheet-header>
 
-	<bottom-sheet-panel>
-		<bottom-sheet-header>
-			<div style="padding-top: 12px">
-				<h4 style="margin: 0; padding: 8px 0">Header</h4>
+			<bottom-sheet-content>
+				<ul>
+					<li>Item 1</li>
+					<li>Item 2</li>
+					<li>Item 3</li>
+				</ul>
+			</bottom-sheet-content>
+
+			<div class="bottom-sheet-button-panel">
+				<button data-action-hide-dialog>Cancel</button>
+				<button>Apply</button>
 			</div>
-		</bottom-sheet-header>
-
-		<bottom-sheet-content>
-			<ul>
-				<li>Item 1</li>
-				<li>Item 2</li>
-				<li>Item 3</li>
-			</ul>
-		</bottom-sheet-content>
-
-		<div class="bottom-sheet-button-panel">
-			<button data-action-hide-bottom-sheet>Cancel</button>
-			<button>Apply</button>
-		</div>
-	</bottom-sheet-panel>
-</bottom-sheet>
+		</bottom-sheet>
+	</dialog>
+</dialog-panel>
 
 <script>
 	const button = document.getElementById('show-bottom-sheet-button');
-	const bottomSheet = document.getElementById('bottom-sheet');
+	const sheet = document.querySelector('bottom-sheet');
 
-	button.addEventListener('click', () => bottomSheet.show());
+	button.addEventListener('click', (e) => sheet.show(e.target));
 </script>
 ```
 
 ## How It Works
 
-- The bottom sheet is initially hidden (aria-hidden="true").
-- Clicking the "Show Bottom Sheet" button will call the show() method, making the bottom sheet visible.
-- You can drag the sheet down to close it or click the background overlay.
-- The hide() method is used to programmatically close the bottom sheet.
-- The sheet automatically hides on screens wider than the specified max-display-width (if provided).
-- Any element within the bottom sheet with a `data-action-hide-bottom-sheet` attribute will close the sheet when clicked.
+- The bottom sheet is wrapped in a `<dialog-panel>` and native `<dialog>` element.
+- Clicking the trigger button calls `show(triggerEl)`, which opens the sheet via `dialog-panel`.
+- You can drag the sheet down to close it or click the backdrop overlay.
+- The `hide()` method programmatically closes the bottom sheet.
+- The sheet automatically hides on screens wider than `max-display-width` (if set).
+- Any element with a `data-action-hide-dialog` attribute will close the sheet when clicked.
+- Accessibility (focus trapping, `aria-modal`, escape key) is handled by the native `<dialog>` element.
 
 ## Configuration
 
 The bottom sheet can be configured using the following attributes:
 
-| Attribute           | Description                                                                                                                                                                            | Default                |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| `max-display-width` | Maximum viewport width in pixels at which the bottom sheet is displayed. If the viewport is wider, the sheet will automatically hide. Omit this attribute to show on all screen sizes. | None (no limit)        |
-| `aria-label`        | Accessible label for the bottom sheet.                                                                                                                                                 | "Bottom sheet content" |
+| Attribute           | Description                                                                                                                                                                            | Default         |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `max-display-width` | Maximum viewport width in pixels at which the bottom sheet is displayed. If the viewport is wider, the sheet will automatically hide. Omit this attribute to show on all screen sizes. | None (no limit) |
 
 Example:
 
 ```html
 <!-- Bottom sheet that only shows on mobile devices -->
-<bottom-sheet max-display-width="600" aria-label="Mobile menu">
-	<!-- content -->
-</bottom-sheet>
+<dialog-panel>
+	<dialog>
+		<bottom-sheet max-display-width="600">
+			<!-- content -->
+		</bottom-sheet>
+	</dialog>
+</dialog-panel>
 
 <!-- Bottom sheet that shows on all screen sizes -->
-<bottom-sheet aria-label="Universal menu">
-	<!-- content -->
-</bottom-sheet>
+<dialog-panel>
+	<dialog>
+		<bottom-sheet>
+			<!-- content -->
+		</bottom-sheet>
+	</dialog>
+</dialog-panel>
 ```
 
 ## Customization
@@ -117,76 +124,68 @@ You can style the Bottom Sheet using CSS custom properties:
 	--bs-handle-color: #999; /* Darker handle */
 
 	/* Sizing */
-	--bs-panel-height: 70vh; /* Shorter panel */
-	--bs-panel-top-position: 30vh; /* Start higher */
+	--bs-panel-max-height: 70vh; /* Shorter panel */
 	--bs-panel-border-radius: 16px; /* Smaller border radius */
 
 	/* Animation */
 	--bs-transition-duration: 250ms; /* Faster animation */
+
+	/* Effects */
+	--bs-overlay-blur: 3px; /* Less blur */
 }
-```
-
-### SCSS Integration
-
-For more advanced customization, you can import the SCSS directly:
-
-```scss
-// Option 1: Import the compiled CSS
-@import '@magic-spells/bottom-sheet/css';
-
-// Option 2: Import the SCSS and override variables
-@use '@magic-spells/bottom-sheet/scss' with (
-	$panel-height: 70vh,
-	$panel-top-position: 30vh,
-	$overlay-background: rgba(0, 0, 0, 0.7),
-	$transition-duration: 250ms
-);
-
-// Option 3: Import specific parts
-@use '@magic-spells/bottom-sheet/scss/variables' with (
-	$panel-border-radius: 16px
-);
-@use '@magic-spells/bottom-sheet/scss/bottom-sheet';
 ```
 
 ### JavaScript API
 
 #### Methods
 
-- `show()`: Opens the bottom sheet.
+- `show(triggerEl)`: Opens the bottom sheet. Pass the trigger element for focus return on close.
 - `hide()`: Closes the bottom sheet.
+
+#### Properties
+
+- `maxDisplayWidth`: Get/set the maximum viewport width for display (number or `Infinity`).
+- `panel`: Reference to the parent `<dialog-panel>` element.
+- `dialog`: Reference to the parent `<dialog>` element.
 
 #### Keyboard Support
 
-- `Escape` key: Closes the bottom sheet when open.
+- `Escape` key: Closes the bottom sheet when open (handled by native `<dialog>`).
 
-#### Custom Events
+#### Events
 
-The component fires the following custom events:
+Events are dispatched on the `<dialog-panel>` element. All events bubble and are composed.
 
-- `bottomsheet:open`: Fired when the bottom sheet is opened.
-- `bottomsheet:close`: Fired when the bottom sheet is closed.
+- `beforeShow`: Fired before opening (cancelable).
+- `shown`: Fired after the open animation completes.
+- `beforeHide`: Fired before closing (cancelable).
+- `hidden`: Fired after the close animation completes.
+
+All events include `detail.triggerElement`, `detail.result`, and `detail.state`.
 
 ```javascript
-// Example usage
-const sheet = document.getElementById('my-bottom-sheet');
+const panel = document.getElementById('sheet-dialog');
 
-sheet.addEventListener('bottomsheet:open', (e) => {
-	console.log('Bottom sheet opened', e.detail.sheet);
+panel.addEventListener('shown', (e) => {
+	console.log('Bottom sheet opened', e.detail);
 });
 
-sheet.addEventListener('bottomsheet:close', (e) => {
-	console.log('Bottom sheet closed', e.detail.sheet);
+panel.addEventListener('hidden', (e) => {
+	console.log('Bottom sheet closed', e.detail);
 });
 ```
 
-#### Touch Events
+#### Touch Gestures
 
-You can listen for specific touch events on the header, content, or overlay to customize behavior.
+- **Header drag**: Always allows dragging the panel down to dismiss.
+- **Backdrop drag**: Always allows dragging the panel down to dismiss.
+- **Content drag**: Allows panel drag when content is scrolled to top and dragging down.
+- **Upward drag**: Applies rubber-band resistance.
+- **Downward drag past threshold**: Dismisses the sheet.
 
 ## Browser Support
 
-This component works in all modern browsers that support Web Components.
+This component works in all modern browsers that support Web Components and the `<dialog>` element.
 
 ## License
 
