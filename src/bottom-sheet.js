@@ -41,6 +41,11 @@ class BottomSheet extends HTMLElement {
   // private backing fields
   #maxDisplayWidth = Infinity;
 
+  // cached references for reliable cleanup in disconnectedCallback
+  #panelRef = null;
+  #dialogRef = null;
+  #backdropBound = false;
+
   /**
    * Define which attributes should be observed for changes
    * @returns {string[]} List of attribute names to observe
@@ -161,9 +166,9 @@ class BottomSheet extends HTMLElement {
       // Also add transitioning class so the open slide-up animates
       beforeShow: () => {
         const backdrop = _.backdrop;
-        if (backdrop && !_._backdropBound) {
+        if (backdrop && !_.#backdropBound) {
           _.#bindTouchEvents(backdrop);
-          _._backdropBound = true;
+          _.#backdropBound = true;
         }
         _.dialog?.classList.add('transitioning');
       },
@@ -218,6 +223,10 @@ class BottomSheet extends HTMLElement {
   connectedCallback() {
     const _ = this;
 
+    // Cache references so disconnectedCallback can reliably unbind
+    _.#panelRef = _.panel;
+    _.#dialogRef = _.dialog;
+
     window.addEventListener('resize', _.#handlers.windowResize);
 
     _.#bindTouchEvents(_.header);
@@ -225,11 +234,11 @@ class BottomSheet extends HTMLElement {
 
     // Backdrop may not exist yet (dialog-panel auto-creates it),
     // so bind touch events lazily on first show
-    _._backdropBound = false;
-    _.panel?.addEventListener('beforeShow', _.#handlers.beforeShow);
+    _.#backdropBound = false;
+    _.#panelRef?.addEventListener('beforeShow', _.#handlers.beforeShow);
 
-    if (_.dialog) {
-      _.dialog.addEventListener('transitionend', _.#handlers.transitionEnd);
+    if (_.#dialogRef) {
+      _.#dialogRef.addEventListener('transitionend', _.#handlers.transitionEnd);
     }
   }
 
@@ -241,16 +250,19 @@ class BottomSheet extends HTMLElement {
     _.#unbindTouchEvents(_.header);
     _.#unbindTouchEvents(_.content);
 
-    if (_._backdropBound) {
-      _.#unbindTouchEvents(_.backdrop);
-      _._backdropBound = false;
+    if (_.#backdropBound) {
+      _.#unbindTouchEvents(_.#panelRef?.querySelector('dialog-backdrop'));
+      _.#backdropBound = false;
     }
 
-    _.panel?.removeEventListener('beforeShow', _.#handlers.beforeShow);
+    _.#panelRef?.removeEventListener('beforeShow', _.#handlers.beforeShow);
 
-    if (_.dialog) {
-      _.dialog.removeEventListener('transitionend', _.#handlers.transitionEnd);
+    if (_.#dialogRef) {
+      _.#dialogRef.removeEventListener('transitionend', _.#handlers.transitionEnd);
     }
+
+    _.#panelRef = null;
+    _.#dialogRef = null;
   }
 
   /**
@@ -344,6 +356,12 @@ class BottomSheet extends HTMLElement {
     const dialog = _.dialog;
     if (!dialog) return;
 
+    // No movement — nothing to animate
+    if (drag.delta === 0) {
+      drag.direction = null;
+      return;
+    }
+
     dialog.classList.add('transitioning');
 
     // Upward drag: always snap back
@@ -373,8 +391,8 @@ class BottomSheet extends HTMLElement {
    * @param {TransitionEvent} e - The transition event
    */
   handleTransitionEnd(e) {
-    if (e.propertyName === 'transform') {
-      this.dialog?.classList.remove('transitioning');
+    if (e.target === this.dialog && e.propertyName === 'transform') {
+      this.dialog.classList.remove('transitioning');
     }
   }
 }
@@ -391,8 +409,14 @@ class BottomSheetHeader extends HTMLElement {
   }
 }
 
-customElements.define('bottom-sheet', BottomSheet);
-customElements.define('bottom-sheet-content', BottomSheetContent);
-customElements.define('bottom-sheet-header', BottomSheetHeader);
+if (!customElements.get('bottom-sheet')) {
+  customElements.define('bottom-sheet', BottomSheet);
+}
+if (!customElements.get('bottom-sheet-content')) {
+  customElements.define('bottom-sheet-content', BottomSheetContent);
+}
+if (!customElements.get('bottom-sheet-header')) {
+  customElements.define('bottom-sheet-header', BottomSheetHeader);
+}
 
 export { BottomSheet, BottomSheetContent, BottomSheetHeader };
