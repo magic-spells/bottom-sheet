@@ -1,0 +1,117 @@
+/**
+ * dialog-panel basic centered modal styles
+ *
+ * This provides a simple fade in/out animation for a centered modal dialog.
+ * Developers can customize or replace these styles to match their design.
+ */
+
+/* Wrapper doesn't affect layout */
+dialog-panel {
+	display: contents;
+}
+
+/* Base dialog styles with transitions */
+dialog-panel > dialog {
+	border: none;
+	border-radius: 0.5rem;
+	padding: 0;
+	max-width: 32rem;
+	width: 90vw;
+	max-height: 85vh;
+	overflow: visible;
+	background: white;
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+
+	/* Start hidden */
+	opacity: 0;
+	transform: scale(0.95);
+
+	/* Transition always defined on base */
+	transition:
+		opacity 0.3s ease-out,
+		transform 0.3s ease-out;
+}
+
+/* When using dialog-backdrop element, make native ::backdrop transparent
+   but keep it clickable (clicks detected via bounding rect check) */
+dialog-panel:has(dialog-backdrop) > dialog::backdrop {
+	background: transparent;
+}
+
+/* Native backdrop (when not using dialog-backdrop) */
+dialog-panel:not(:has(dialog-backdrop)) > dialog::backdrop {
+	background: rgba(0, 0, 0, 0.3);
+	opacity: 0;
+	transition: opacity 0.3s ease-out;
+}
+
+/* Custom dialog-backdrop element */
+dialog-backdrop {
+	position: fixed;
+	background: rgba(0, 0, 0, 0.3);
+	opacity: 0;
+	transition: opacity 0.3s ease-out;
+	pointer-events: none;
+	z-index: 9999999;
+	top: 50%;
+	left: 50%;
+	width: 200vw;
+	height: 200dvh;
+	transform: translateY(-50%) translateX(-50%);
+}
+
+/* Showing state - dialog is open but still at initial values
+   (this is the starting point for the fade-in animation) */
+dialog-panel[state='showing'] > dialog {
+	opacity: 0;
+	transform: scale(0.95);
+}
+
+dialog-panel:not(:has(dialog-backdrop))[state='showing']
+	> dialog::backdrop {
+	opacity: 0;
+}
+
+/* Shown state - fully visible (animates from showing → shown) */
+dialog-panel[state='shown'] > dialog {
+	opacity: 1;
+	transform: scale(1);
+}
+
+dialog-panel:not(:has(dialog-backdrop))[state='shown']
+	> dialog::backdrop {
+	opacity: 1;
+}
+
+/* Hiding state - faster exit animation */
+dialog-panel[state='hiding'] > dialog {
+	opacity: 0;
+	transform: scale(0.95);
+	transition:
+		opacity 0.2s ease-in,
+		transform 0.2s ease-in;
+}
+
+dialog-panel:not(:has(dialog-backdrop))[state='hiding']
+	> dialog::backdrop {
+	opacity: 0;
+	transition: opacity 0.2s ease-in;
+}
+
+/* dialog-backdrop state animations */
+dialog-panel[state='showing'] > dialog-backdrop,
+dialog-panel[state='hidden'] > dialog-backdrop {
+	opacity: 0;
+	pointer-events: none;
+}
+
+dialog-panel[state='shown'] > dialog-backdrop {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+dialog-panel[state='hiding'] > dialog-backdrop {
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease-in;
+}

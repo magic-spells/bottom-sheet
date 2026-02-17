@@ -1,9 +1,11 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 
-    <title>bottom sheet panel test</title>
+    <title>bottom sheet test</title>
 
+    <link rel="stylesheet" href="./dialog-panel.css" />
     <link rel="stylesheet" href="./bottom-sheet.min.css" />
 
     <style>
@@ -13,7 +15,7 @@
         box-sizing: border-box;
       }
 
-      bottom-sheet-panel {
+      dialog-panel:has(bottom-sheet) > dialog {
         left: 0;
         right: 0;
         width: 100%;
@@ -90,41 +92,42 @@
 
     <button id="show-bottom-sheet-button" class="test-button">Show bottom sheet</button>
 
-    <bottom-sheet aria-hidden="true" id="bottom-sheet-1">
-      <bottom-sheet-overlay></bottom-sheet-overlay>
+    <dialog-panel id="sheet-dialog">
+      <dialog>
+        <bottom-sheet>
+          <bottom-sheet-header>
+            <div style="padding-top: 12px">
+              <h4 style="margin: 0px; padding: 8px 0px">Header</h4>
+            </div>
+          </bottom-sheet-header>
 
-      <bottom-sheet-panel>
-        <bottom-sheet-header>
-          <div style="padding-top: 12px">
-            <h4 style="margin: 0px; padding: 8px 0px">Header</h4>
+          <bottom-sheet-content>
+            <ul class="bottom-sheet-list">
+              <li>Item 1</li>
+              <li>Item 2</li>
+              <li>Item 3</li>
+              <li>Item 4</li>
+              <li>Item 5</li>
+            </ul>
+          </bottom-sheet-content>
+
+          <div class="bottom-sheet-button-panel">
+            <button data-action-hide-dialog>Clear</button>
+            <button data-action-hide-dialog>Apply</button>
           </div>
-        </bottom-sheet-header>
+        </bottom-sheet>
+      </dialog>
+    </dialog-panel>
 
-        <bottom-sheet-content class="bottom-sheet-content">
-          <ul class="bottom-sheet-list">
-            <li>Item 1</li>
-            <li>Item 2</li>
-            <li>Item 3</li>
-            <li>Item 4</li>
-            <li>Item 5</li>
-          </ul>
-        </bottom-sheet-content>
+    <script type="module">
+      import './dialog-panel.esm.js';
+      import './bottom-sheet.esm.js';
 
-        <div class="bottom-sheet-button-panel">
-          <button data-action-hide-bottom-sheet class="">Clear</button>
-          <button data-action-hide-bottom-sheet class="">Apply</button>
-        </div>
-      </bottom-sheet-panel>
-    </bottom-sheet>
+      const button = document.getElementById('show-bottom-sheet-button');
+      const sheet = document.getElementById('sheet-dialog');
 
-    <script type="module" src="./bottom-sheet.esm.js"></script>
-
-    <script>
-      let button = document.getElementById('show-bottom-sheet-button');
-      let bottomSheet = document.getElementById('bottom-sheet-1');
-
-      button.addEventListener('click', function (e) {
-        bottomSheet.show();
+      button.addEventListener('click', (e) => {
+        sheet.show(e.target);
       });
     </script>
   </body>
