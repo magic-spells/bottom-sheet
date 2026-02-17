@@ -9,116 +9,116 @@ const name = 'bottom-sheet';
 
 // CSS plugin config
 const cssPlugin = postcss({
-  extract: `${name}.css`,
-  minimize: false,
-  sourceMap: dev,
+	extract: `${name}.css`,
+	minimize: false,
+	sourceMap: dev,
 });
 
 // CSS plugin config (minimized version)
 const cssMinPlugin = postcss({
-  extract: `${name}.min.css`,
-  minimize: true,
-  sourceMap: dev,
+	extract: `${name}.min.css`,
+	minimize: true,
+	sourceMap: dev,
 });
 
 export default [
-  // ESM build
-  {
-    input: 'src/bottom-sheet.js',
-    output: {
-      file: `dist/${name}.esm.js`,
-      format: 'es',
-      sourcemap: true,
-    },
-    plugins: [resolve(), cssPlugin],
-  },
-  // CommonJS build
-  {
-    input: 'src/bottom-sheet.js',
-    output: {
-      file: `dist/${name}.cjs.js`,
-      format: 'cjs',
-      sourcemap: true,
-      exports: 'named',
-    },
-    plugins: [resolve(), cssPlugin],
-  },
-  // UMD build
-  {
-    input: 'src/bottom-sheet.js',
-    output: {
-      file: `dist/${name}.js`,
-      format: 'umd',
-      name: 'BottomSheet',
-      sourcemap: true,
-    },
-    plugins: [resolve(), cssPlugin],
-  },
-  // Minified UMD for browsers
-  {
-    input: 'src/bottom-sheet.js',
-    output: {
-      file: `dist/${name}.min.js`,
-      format: 'umd',
-      name: 'BottomSheet',
-      sourcemap: false,
-    },
-    plugins: [
-      resolve(),
-      cssMinPlugin,
-      terser({
-        keep_classnames: true,
-        format: {
-          comments: false,
-        },
-      }),
-    ],
-  },
-  // Development build
-  ...(dev
-    ? [
-        {
-          input: 'src/bottom-sheet.js',
-          output: {
-            file: `dist/${name}.esm.js`,
-            format: 'es',
-            sourcemap: true,
-          },
-          plugins: [
-            resolve(),
-            cssMinPlugin,
-            serve({
-              contentBase: ['dist', 'demo'],
-              open: true,
-              port: 3000,
-            }),
-            copy({
-              targets: [
-                {
-                  src: `dist/${name}.esm.js`,
-                  dest: 'demo',
-                },
-                {
-                  src: `dist/${name}.esm.js.map`,
-                  dest: 'demo',
-                },
-                {
-                  src: `dist/${name}.min.css`,
-                  dest: 'demo',
-                },
-                {
-                  src: 'node_modules/@magic-spells/dialog-panel/dist/dialog-panel.esm.js',
-                  dest: 'demo',
-                },
-                {
-                  src: 'node_modules/@magic-spells/dialog-panel/dist/dialog-panel.css',
-                  dest: 'demo',
-                },
-              ],
-              hook: 'writeBundle',
-            }),
-          ],
-        },
-      ]
-    : []),
+	// ESM build
+	{
+		input: 'src/bottom-sheet.js',
+		output: {
+			file: `dist/${name}.esm.js`,
+			format: 'es',
+			sourcemap: true,
+		},
+		plugins: [resolve(), cssPlugin],
+	},
+	// CommonJS build
+	{
+		input: 'src/bottom-sheet.js',
+		output: {
+			file: `dist/${name}.cjs.js`,
+			format: 'cjs',
+			sourcemap: true,
+			exports: 'named',
+		},
+		plugins: [resolve(), cssPlugin],
+	},
+	// UMD build
+	{
+		input: 'src/bottom-sheet.js',
+		output: {
+			file: `dist/${name}.js`,
+			format: 'umd',
+			name: 'BottomSheet',
+			sourcemap: true,
+		},
+		plugins: [resolve(), cssPlugin],
+	},
+	// Minified UMD for browsers
+	{
+		input: 'src/bottom-sheet.js',
+		output: {
+			file: `dist/${name}.min.js`,
+			format: 'umd',
+			name: 'BottomSheet',
+			sourcemap: false,
+		},
+		plugins: [
+			resolve(),
+			cssMinPlugin,
+			terser({
+				keep_classnames: true,
+				format: {
+					comments: false,
+				},
+			}),
+		],
+	},
+	// Development build
+	...(dev
+		? [
+				{
+					input: 'src/bottom-sheet.js',
+					output: {
+						file: `dist/${name}.esm.js`,
+						format: 'es',
+						sourcemap: true,
+					},
+					plugins: [
+						resolve(),
+						cssMinPlugin,
+						serve({
+							contentBase: ['dist', 'demo'],
+							open: true,
+							port: 3000,
+						}),
+						copy({
+							targets: [
+								{
+									src: `dist/${name}.esm.js`,
+									dest: 'demo',
+								},
+								{
+									src: `dist/${name}.esm.js.map`,
+									dest: 'demo',
+								},
+								{
+									src: `dist/${name}.min.css`,
+									dest: 'demo',
+								},
+								{
+									src: 'node_modules/@magic-spells/dialog-panel/dist/dialog-panel.esm.js',
+									dest: 'demo',
+								},
+								{
+									src: 'node_modules/@magic-spells/dialog-panel/dist/dialog-panel.css',
+									dest: 'demo',
+								},
+							],
+							hook: 'writeBundle',
+						}),
+					],
+				},
+			]
+		: []),
 ];

@@ -1,134 +1,134 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 
-    <title>bottom sheet test</title>
+		<title>bottom sheet test</title>
 
-    <link rel="stylesheet" href="./dialog-panel.css" />
-    <link rel="stylesheet" href="./bottom-sheet.min.css" />
+		<link rel="stylesheet" href="./dialog-panel.css" />
+		<link rel="stylesheet" href="./bottom-sheet.min.css" />
 
-    <style>
-      body {
-        padding: 0px;
-        margin: 0px;
-        box-sizing: border-box;
-      }
+		<style>
+			body {
+				padding: 0px;
+				margin: 0px;
+				box-sizing: border-box;
+			}
 
-      dialog-panel:has(bottom-sheet) > dialog {
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-width: 600px;
-        margin: 0 auto;
-      }
+			dialog-panel:has(bottom-sheet) > dialog {
+				left: 0;
+				right: 0;
+				width: 100%;
+				max-width: 600px;
+				margin: 0 auto;
+			}
 
-      bottom-sheet-header {
-        font-family: Helvetica, Arial, sans-serif;
-        font-size: 18px;
-      }
+			bottom-sheet-header {
+				font-family: Helvetica, Arial, sans-serif;
+				font-size: 18px;
+			}
 
-      .bottom-sheet-list {
-        list-style-type: none;
-        margin: 0px;
-        padding: 0px;
-        width: 100%;
-      }
+			.bottom-sheet-list {
+				list-style-type: none;
+				margin: 0px;
+				padding: 0px;
+				width: 100%;
+			}
 
-      .bottom-sheet-list li {
-        margin-bottom: 16px;
-        padding: 16px;
-        background: lightblue;
-        height: 200px;
-      }
+			.bottom-sheet-list li {
+				margin-bottom: 16px;
+				padding: 16px;
+				background: lightblue;
+				height: 200px;
+			}
 
-      .bottom-sheet-button-panel {
-        padding: 14px 20px;
-        display: flex;
-        gap: 16px;
-      }
+			.bottom-sheet-button-panel {
+				padding: 14px 20px;
+				display: flex;
+				gap: 16px;
+			}
 
-      .bottom-sheet-button-panel button {
-        flex: 1;
-        appearance: none;
-        font-family: Helvetica, Arial, sans-serif;
-        background: white;
-        font-size: 15px;
-        font-weight: 500;
-        border-radius: 5px;
-        padding: 8px;
-        letter-spacing: 0.05em;
-      }
+			.bottom-sheet-button-panel button {
+				flex: 1;
+				appearance: none;
+				font-family: Helvetica, Arial, sans-serif;
+				background: white;
+				font-size: 15px;
+				font-weight: 500;
+				border-radius: 5px;
+				padding: 8px;
+				letter-spacing: 0.05em;
+			}
 
-      .bg-image {
-        width: 100%;
-        height: 100vh;
-        object-fit: cover;
-      }
+			.bg-image {
+				width: 100%;
+				height: 100vh;
+				object-fit: cover;
+			}
 
-      .test-button {
-        appearance: none;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        font-size: 16px;
-        font-weight: 600;
-        text-transform: uppercase;
-        border: 1px solid #8e4a00;
-        border-radius: 5px;
-        transform: translate3d(-50%, -50%, 0);
-        padding: 12px 20px;
-        font-family: Helvetica, arial;
-        font-weight: 500;
-        letter-spacing: 0.6px;
-        background: #c96900;
-        color: white;
-        text-shadow: 0px 1px 5px rgba(0, 0, 0, 0.25);
-      }
-    </style>
-  </head>
-  <body>
-    <img class="bg-image" src="./bg-image.jpg" style="width: 100%" />
+			.test-button {
+				appearance: none;
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				font-size: 16px;
+				font-weight: 600;
+				text-transform: uppercase;
+				border: 1px solid #8e4a00;
+				border-radius: 5px;
+				transform: translate3d(-50%, -50%, 0);
+				padding: 12px 20px;
+				font-family: Helvetica, arial;
+				font-weight: 500;
+				letter-spacing: 0.6px;
+				background: #c96900;
+				color: white;
+				text-shadow: 0px 1px 5px rgba(0, 0, 0, 0.25);
+			}
+		</style>
+	</head>
+	<body>
+		<img class="bg-image" src="./bg-image.jpg" style="width: 100%" />
 
-    <button id="show-bottom-sheet-button" class="test-button">Show bottom sheet</button>
+		<button id="show-bottom-sheet-button" class="test-button">Show bottom sheet</button>
 
-    <dialog-panel id="sheet-dialog">
-      <dialog>
-        <bottom-sheet>
-          <bottom-sheet-header>
-            <div style="padding-top: 12px">
-              <h4 style="margin: 0px; padding: 8px 0px">Header</h4>
-            </div>
-          </bottom-sheet-header>
+		<dialog-panel id="sheet-dialog">
+			<dialog>
+				<bottom-sheet>
+					<bottom-sheet-header>
+						<div style="padding-top: 12px">
+							<h4 style="margin: 0px; padding: 8px 0px">Header</h4>
+						</div>
+					</bottom-sheet-header>
 
-          <bottom-sheet-content>
-            <ul class="bottom-sheet-list">
-              <li>Item 1</li>
-              <li>Item 2</li>
-              <li>Item 3</li>
-              <li>Item 4</li>
-              <li>Item 5</li>
-            </ul>
-          </bottom-sheet-content>
+					<bottom-sheet-content>
+						<ul class="bottom-sheet-list">
+							<li>Item 1</li>
+							<li>Item 2</li>
+							<li>Item 3</li>
+							<li>Item 4</li>
+							<li>Item 5</li>
+						</ul>
+					</bottom-sheet-content>
 
-          <div class="bottom-sheet-button-panel">
-            <button data-action-hide-dialog>Clear</button>
-            <button data-action-hide-dialog>Apply</button>
-          </div>
-        </bottom-sheet>
-      </dialog>
-    </dialog-panel>
+					<div class="bottom-sheet-button-panel">
+						<button data-action-hide-dialog>Clear</button>
+						<button data-action-hide-dialog>Apply</button>
+					</div>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
 
-    <script type="module">
-      import './dialog-panel.esm.js';
-      import './bottom-sheet.esm.js';
+		<script type="module">
+			import './dialog-panel.esm.js';
+			import './bottom-sheet.esm.js';
 
-      const button = document.getElementById('show-bottom-sheet-button');
-      const sheet = document.getElementById('sheet-dialog');
+			const button = document.getElementById('show-bottom-sheet-button');
+			const sheet = document.getElementById('sheet-dialog');
 
-      button.addEventListener('click', (e) => {
-        sheet.show(e.target);
-      });
-    </script>
-  </body>
+			button.addEventListener('click', (e) => {
+				sheet.show(e.target);
+			});
+		</script>
+	</body>
 </html>

@@ -1,75 +1,76 @@
 {
-  "name": "@magic-spells/bottom-sheet",
-  "version": "1.0.0",
-  "description": "Bottom sheet web component powered by dialog-panel.",
-  "author": "Cory Schulz",
-  "license": "MIT",
-  "type": "module",
-  "main": "dist/bottom-sheet.cjs.js",
-  "module": "dist/bottom-sheet.esm.js",
-  "unpkg": "dist/bottom-sheet.min.js",
-  "style": "dist/bottom-sheet.min.css",
-  "exports": {
-    ".": {
-      "import": "./dist/bottom-sheet.esm.js",
-      "require": "./dist/bottom-sheet.cjs.js",
-      "default": "./dist/bottom-sheet.esm.js"
-    },
-    "./css": "./dist/bottom-sheet.css",
-    "./css/min": "./dist/bottom-sheet.min.css"
-  },
-  "sideEffects": true,
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/magic-spells/bottom-sheet"
-  },
-  "homepage": "https://github.com/magic-spells/bottom-sheet#readme",
-  "bugs": {
-    "url": "https://github.com/magic-spells/bottom-sheet/issues"
-  },
-  "keywords": [
-    "bottom-sheet",
-    "web-components",
-    "dialog",
-    "accessibility",
-    "a11y",
-    "custom-elements"
-  ],
-  "files": [
-    "dist/",
-    "src/"
-  ],
-  "scripts": {
-    "build": "rollup -c",
-    "lint": "eslint src/ rollup.config.mjs",
-    "format": "prettier --write .",
-    "prepublishOnly": "npm run build",
-    "serve": "rollup -c --watch",
-    "dev": "rollup -c --watch"
-  },
-  "peerDependencies": {
-    "@magic-spells/dialog-panel": "^1.0.0"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
-  "browserslist": [
-    "last 2 versions",
-    "not dead",
-    "not ie <= 11"
-  ],
-  "devDependencies": {
-    "@eslint/js": "^9.38.0",
-    "@magic-spells/dialog-panel": "^1.0.0",
-    "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-terser": "^0.4.4",
-    "eslint": "^9.38.0",
-    "globals": "^15.15.0",
-    "prettier": "^3.3.3",
-    "rollup": "^3.0.0",
-    "rollup-plugin-copy": "^3.5.0",
-    "rollup-plugin-postcss": "^4.0.2",
-    "rollup-plugin-serve": "^1.1.1"
-  }
+	"name": "@magic-spells/bottom-sheet",
+	"version": "1.0.0",
+	"description": "Bottom sheet web component powered by dialog-panel.",
+	"author": "Cory Schulz",
+	"license": "MIT",
+	"type": "module",
+	"main": "dist/bottom-sheet.cjs.js",
+	"module": "dist/bottom-sheet.esm.js",
+	"unpkg": "dist/bottom-sheet.min.js",
+	"style": "dist/bottom-sheet.min.css",
+	"exports": {
+		".": {
+			"import": "./dist/bottom-sheet.esm.js",
+			"require": "./dist/bottom-sheet.cjs.js",
+			"default": "./dist/bottom-sheet.esm.js"
+		},
+		"./css": "./dist/bottom-sheet.css",
+		"./css/min": "./dist/bottom-sheet.min.css"
+	},
+	"sideEffects": true,
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/magic-spells/bottom-sheet"
+	},
+	"homepage": "https://github.com/magic-spells/bottom-sheet#readme",
+	"bugs": {
+		"url": "https://github.com/magic-spells/bottom-sheet/issues"
+	},
+	"keywords": [
+		"bottom-sheet",
+		"web-components",
+		"dialog",
+		"accessibility",
+		"a11y",
+		"custom-elements"
+	],
+	"files": [
+		"dist/",
+		"src/"
+	],
+	"scripts": {
+		"build": "rollup -c",
+		"lint": "eslint src/ rollup.config.mjs",
+		"format": "prettier --write .",
+		"prepublishOnly": "npm run build",
+		"serve": "rollup -c --watch",
+		"dev": "rollup -c --watch"
+	},
+	"peerDependencies": {
+		"@magic-spells/dialog-panel": "^1.0.0"
+	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"browserslist": [
+		"last 2 versions",
+		"not dead",
+		"not ie <= 11"
+	],
+	"devDependencies": {
+		"@eslint/js": "^9.38.0",
+		"@magic-spells/dialog-panel": "^1.0.0",
+		"@rollup/plugin-node-resolve": "^15.2.3",
+		"@rollup/plugin-terser": "^0.4.4",
+		"baseline-browser-mapping": "^2.9.19",
+		"eslint": "^9.38.0",
+		"globals": "^15.15.0",
+		"prettier": "^3.3.3",
+		"rollup": "^3.0.0",
+		"rollup-plugin-copy": "^3.5.0",
+		"rollup-plugin-postcss": "^4.0.2",
+		"rollup-plugin-serve": "^1.1.1"
+	}
 }
