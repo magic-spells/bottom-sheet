@@ -18,7 +18,10 @@
 	   own content wrapper to make up for its absence. */
 	--bs-content-padding-block: 0;
 	--bs-transition-duration: 300ms;
-	--bs-transition-timing: ease;
+	/* Decelerate-only. Every transition here follows a release or a deliberate
+	   trigger, so the motion must start at speed and settle — `ease` softens
+	   the start, which reads as a hitch when a drag hands off to the animation. */
+	--bs-transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
 	--bs-overlay-background: rgba(0, 0, 0, 0.5);
 	--bs-overlay-blur: 5px;
 }

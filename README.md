@@ -173,7 +173,7 @@ Set these on `:root`, a panel, or another ancestor.
 | `--bs-footer-padding` | `--bs-content-padding` | Footer inset (safe-area padding is added below) |
 | `--bs-footer-background` | `transparent` | Footer background |
 | `--bs-transition-duration` | `300ms` | Open, close, and snap-back duration |
-| `--bs-transition-timing` | `ease` | Transition timing function |
+| `--bs-transition-timing` | `cubic-bezier(0.32, 0.72, 0, 1)` | Transition timing function. Decelerate-only by default: every transition follows a release or a deliberate trigger, so it starts at speed and settles rather than easing in from rest |
 | `--bs-overlay-background` | `rgba(0, 0, 0, 0.5)` | Backdrop fill |
 | `--bs-overlay-blur` | `5px` | Backdrop blur |
 

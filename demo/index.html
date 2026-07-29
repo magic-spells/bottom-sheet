@@ -61,7 +61,7 @@
 				--bs-footer-padding: 20px;
 				--bs-footer-background: #1d1418;
 				--bs-transition-duration: 300ms;
-				--bs-transition-timing: ease;
+				--bs-transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
 				--bs-overlay-background: rgba(5, 2, 3, 0.72);
 				--bs-overlay-blur: 6px;
 			}
@@ -1687,8 +1687,13 @@ sheet.hide();</pre>
 					</div>
 					<div class="ref-row">
 						<div><code>--bs-transition-timing</code></div>
-						<div><code>ease</code></div>
-						<div>Transition timing function.</div>
+						<div><code>cubic-bezier(0.32, 0.72, 0, 1)</code></div>
+						<div>
+							Transition timing function. Decelerate-only by default — every transition here follows
+							a release or a deliberate trigger, so the motion starts at speed and settles. A
+							symmetric curve like <code>ease</code> softens the start, which reads as a hitch when
+							a drag hands off to the animation.
+						</div>
 					</div>
 					<div class="ref-row">
 						<div><code>--bs-overlay-background</code></div>
