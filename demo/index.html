@@ -235,12 +235,37 @@
 				border-color: var(--ember-dim);
 			}
 
+			/* Stacked rather than inline — the row broke awkwardly once there was
+			   more than one dependency to name */
 			.uses {
 				display: flex;
+				flex-direction: column;
 				align-items: center;
 				justify-content: center;
-				gap: 0.7rem;
-				margin-top: 0.9rem;
+				gap: 0.55rem;
+				margin-top: 1.1rem;
+			}
+
+			.size-note {
+				display: flex;
+				align-items: baseline;
+				justify-content: center;
+				gap: 0.45rem;
+				margin-top: 0.75rem;
+			}
+
+			.size-value {
+				color: var(--ember-text);
+				font-family: var(--font-mono);
+				font-size: 0.92rem;
+			}
+
+			.size-label {
+				color: var(--cream-faint, var(--cream-dim));
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				letter-spacing: 0.18em;
+				text-transform: uppercase;
 			}
 
 			.uses-label {
@@ -959,9 +984,21 @@
 
 			<div class="install">
 				<span class="install-label" id="install-label">Install</span>
+				<!-- dialog-panel is a peer dependency, so npm will not pull it in on its
+				     own — it has to be named here or a copied command yields a sheet with
+				     no <dialog-panel> defined. physics-engine is a regular dependency and
+				     is resolved automatically, so it must NOT be listed. -->
 				<code class="install-value" id="install-value" title="Click to copy"
-					>npm install @magic-spells/bottom-sheet</code
+					>npm install @magic-spells/bottom-sheet @magic-spells/dialog-panel</code
 				>
+				<!-- The whole stack, not just this package: both bundles plus both
+				     stylesheets. Sitting under an install line that names two packages,
+				     anything narrower reads as the total and undersells by half. -->
+				<div class="size-note">
+					<span class="size-value">8.0 kB</span>
+					<span class="size-label">min + gzip, everything</span>
+				</div>
+
 				<div class="uses">
 					<span class="uses-label">Uses</span>
 					<a
@@ -970,6 +1007,13 @@
 						target="_blank"
 						rel="noopener"
 						><span class="dep-scope">@magic-spells/</span>dialog-panel</a
+					>
+					<a
+						class="dep-badge"
+						href="https://github.com/magic-spells/physics-engine"
+						target="_blank"
+						rel="noopener"
+						><span class="dep-scope">@magic-spells/</span>physics-engine</a
 					>
 				</div>
 			</div>
@@ -1028,12 +1072,10 @@ sheet.show(trigger)</pre>
 				<h2>Let go, and the sheet <em>decides</em>.</h2>
 				<p class="demo-desc">
 					Two independent rules run on release, and either one dismisses.
-					<strong>A flick</strong> only needs speed: downward velocity above <code>0.5 px/ms</code>,
-					measured over the last 100ms of the gesture, so a short sharp swipe closes without
-					travelling far. <strong>A pull</strong> only needs distance: more than
-					<code>100px</code> down, with release velocity still above <code>-0.05 px/ms</code> — that
-					second clause is what lets you change your mind. Drag past the threshold, reverse upward,
-					and the sheet snaps home.
+					<strong>A flick</strong> only needs speed — downward velocity above
+					<code>0.5 px/ms</code>. <strong>A pull</strong> only needs distance — more than
+					<code>100px</code> down, unless you have already reversed upward, which is what lets you
+					change your mind mid-drag.
 				</p>
 				<p class="demo-desc">
 					Cancelled gestures always snap back. Upward drags never dismiss; they get a square-root
@@ -1067,11 +1109,9 @@ sheet.show(trigger)</pre>
 				</div>
 				<h2>The list runs out, and the panel picks it up.</h2>
 				<p class="demo-desc">
-					A sheet full of list items has two plausible readings of a downward drag: scroll the list,
-					or move the panel. The sheet re-asks that question on <strong>every move</strong> until
-					one of them wins, so the answer can change part way through a single continuous gesture.
-					Scroll up through the list, hit the top, and keep pulling — the panel takes over from
-					there without you lifting a finger.
+					A downward drag on a list has two plausible readings: scroll it, or move the panel. The
+					sheet re-asks on <strong>every move</strong> rather than deciding once, so scrolling to
+					the top and continuing to pull hands the gesture over without you lifting a finger.
 				</p>
 				<p class="demo-desc">
 					The distance already travelled is recorded as <code>claimOffset</code> at the moment of
@@ -1110,16 +1150,14 @@ drag.claimOffset = deltaY;
 				<h2>Three resting heights, and the sheet picks one.</h2>
 				<p class="demo-desc">
 					Give the sheet <code>snap-points="40,70,90"</code> and it stops being a two-state thing.
-					Each number is a percentage of the viewport height, and it becomes the
-					<strong>height</strong> of the dialog rather than a distance to push it down by. That
-					choice is what keeps the footer pinned to the bottom edge at every snap and keeps the
-					scrollable region exactly as tall as the part you can actually see.
+					Each number is a percentage of the viewport that becomes the dialog's
+					<strong>height</strong>, not a distance to push it down by — which is what keeps the
+					footer pinned and the scroll region honest at every snap.
 				</p>
 				<p class="demo-desc">
-					On release, a flick steps exactly one snap in its own direction — never two, however hard
-					you throw it — and anything slower lands on whichever snap is nearest. Stepping is
-					measured from where the sheet <em>is</em>, not from the snap the gesture started at, so
-					dragging from 40 up past 90 and flicking up doesn't fall backwards to 70.
+					A flick steps exactly one snap in its own direction — never two, however hard you throw it
+					— and anything slower lands on the nearest. Stepping measures from where the sheet
+					<em>is</em>, so dragging from 40 past 90 and flicking up won't fall back to 70.
 				</p>
 				<p class="demo-desc">
 					Dragging below the shortest snap stops being a resize and becomes the ordinary dismiss
@@ -1162,11 +1200,9 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					header, and a results list that scrolls once there's room for it to.
 				</p>
 				<p class="demo-desc">
-					At the 25dvh peek there's barely a list to scroll, so dragging <strong>up</strong> on the
-					content grows the sheet instead of scrolling it — you expand first, then scroll, which is
-					the behaviour your thumb already expects. Only at the tallest snap does an upward drag go
-					back to being an ordinary scroll. A sheet with no snap points declared never takes that
-					branch, so nothing about this changes the plain case.
+					At the 25dvh peek there's barely a list to scroll, so dragging <strong>up</strong> grows
+					the sheet instead — you expand first, then scroll. Only at the tallest snap does an upward
+					drag go back to being an ordinary scroll.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="map-panel">Open the peek</button>
@@ -1195,11 +1231,10 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					bar stays exactly where your thumb expects it.
 				</p>
 				<p class="demo-desc">
-					The footer also takes over the safe area. Without one, the dialog pads itself by
-					<code>env(safe-area-inset-bottom)</code>; the moment a footer appears, that padding moves
-					into the footer instead, so its background runs all the way to the bottom edge of the
-					screen rather than stopping short of the home indicator. Tune the inset with
-					<code>--bs-footer-padding</code> — the safe area is added below whatever you set.
+					The footer also takes over the safe area. Without one the dialog pads itself by
+					<code>env(safe-area-inset-bottom)</code>; with one, that padding moves into the footer so
+					its background runs to the bottom edge rather than stopping short of the home indicator.
+					Tune it with <code>--bs-footer-padding</code>.
 				</p>
 				<p class="demo-desc">
 					The footer is a drag surface too, so the sheet is still dismissible from the one part of
@@ -1240,10 +1275,8 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 				</p>
 				<p class="demo-desc">
 					<strong>The off-screen position has to be corrected too.</strong> The hidden state
-					translates the sheet down by <code>100%</code>, which is only the panel's own height — the
-					moment there's a gap beneath it, that leaves the sheet peeking above the bottom edge by
-					exactly the inset. The inset rules add the gap and the safe area back into that
-					translation.
+					translates down by <code>100%</code>, which is only the panel's own height — so once
+					there's a gap beneath it, the sheet would peek above the bottom edge by exactly the inset.
 				</p>
 				<p class="demo-desc">
 					The footer needs a second correction. Normally it absorbs
@@ -1283,10 +1316,9 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					the combination most likely to break, so it gets its own sheet.
 				</p>
 				<p class="demo-desc">
-					One honest quirk: with a bottom gap, <code>height: 70dvh</code> puts the top edge at
-					<code>100 − 70 − inset</code> from the bottom of the screen, so a floating sheet at a
-					given snap sits slightly higher than an edge-anchored one at the same snap. Height is
-					height — the snap describes the sheet, not the gap under it.
+					One honest quirk: with a bottom gap, a floating sheet at a given snap sits slightly higher
+					than an edge-anchored one at the same snap. Height is height — the snap describes the
+					sheet, not the gap under it.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="inset-snap-panel">Open both at once</button>
@@ -1333,20 +1365,15 @@ sheet.maxDisplayWidth = Infinity;</pre>
 				</div>
 				<h2>Every hook, on one sheet.</h2>
 				<p class="demo-desc">
-					The reference table further down lists the custom properties; this one lets you turn them.
-					The sliders and swatches are not a component API — they write plain
+					The sliders below aren't a component API — they write plain
 					<code>style.setProperty</code> calls onto the <code>&lt;dialog-panel&gt;</code>, and
-					inheritance carries them to the dialog, the handle, the padding, and the backdrop. Because
-					every styling hook is an inherited custom property, you can theme one sheet without
-					touching any of the others, and without a single selector of your own.
+					inheritance carries them to the dialog, handle, padding and backdrop. That's why you can
+					theme one sheet without touching any other, and without a selector of your own.
 				</p>
 				<p class="demo-desc">
-					The last two switches are a different kind of thing. <code>inset</code> and
-					<code>snap-points</code> are attributes on the <code>&lt;bottom-sheet&gt;</code> itself,
-					so they're toggled rather than dialled. The snap switch sets
-					<code>snap-points="95,66,40"</code> — deliberately out of order, because the parser sorts
-					and dedupes, so the sheet ends up with 40, 66 and 95 and opens at the shortest. Switching
-					it back off restores the plain two-state sheet and clears the height it was holding.
+					The last switches are attributes on the <code>&lt;bottom-sheet&gt;</code> itself, so they
+					toggle rather than dial. The snap switch sets <code>snap-points="95,66,40"</code> —
+					deliberately out of order, because the parser sorts and dedupes.
 				</p>
 				<p class="demo-desc">
 					Set the dials first — an open modal makes everything behind it inert, so these controls
@@ -1505,14 +1532,8 @@ sheet.maxDisplayWidth = Infinity;</pre>
 					</label>
 					<label class="theme-row">
 						<span class="theme-label">· attraction</span>
-						<input
-							type="range"
-							id="theme-attraction"
-							min="5"
-							max="200"
-							step="1"
-							value="50" />
-						<span class="theme-value">0.050</span>
+						<input type="range" id="theme-attraction" min="5" max="200" step="1" value="53" />
+						<span class="theme-value">0.053</span>
 					</label>
 					<label class="theme-row">
 						<span class="theme-label">· friction</span>
@@ -1777,9 +1798,38 @@ sheet.hide();</pre>
 						<div>Footer background.</div>
 					</div>
 					<div class="ref-row">
+						<div><code>--bs-panel-hidden-offset</code></div>
+						<div><code>20px</code></div>
+						<div>
+							Extra travel past the bottom edge when hidden. <code>100%</code> is only the panel's
+							own height, so the sheet stops the instant its top edge clears the fold — which reads
+							as the motion being cut short. Applied to the hidden, showing and hiding transforms
+							alike, so opening and closing stay symmetrical.
+						</div>
+					</div>
+					<div class="ref-row">
 						<div><code>--bs-transition-duration</code></div>
 						<div><code>400ms</code></div>
-						<div>Open, close, and snap-back duration.</div>
+						<div>Open, close, and backdrop-fade duration.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-snap-duration</code></div>
+						<div><code>280ms</code></div>
+						<div>
+							Settle onto a snap point. Kept separate because a snap-to-snap move covers a fraction
+							of the distance an open or a close does, and one shared duration stretches that short
+							move out until it reads as hesitation.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-snap-timing</code></div>
+						<div><code>--bs-transition-timing</code></div>
+						<div>
+							Timing function for the snap settle — inherits until overridden. A
+							<code>cubic-bezier</code> whose second control point exceeds <code>1</code>
+							overshoots the snap and springs back. Overshoot is a share of the travelled distance,
+							so check that your tallest snap still clears the viewport.
+						</div>
 					</div>
 					<div class="ref-row">
 						<div><code>--bs-transition-timing</code></div>

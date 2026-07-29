@@ -141,7 +141,7 @@ class BottomSheet extends HTMLElement {
 		// despite the stronger pull: a snap-to-snap move reaches the snap in
 		// ~430ms with almost no overshoot, and stops ringing ~270ms sooner.
 		// Tighter and more controlled rather than springier.
-		const options = { attraction: 0.05, friction: 0.3 };
+		const options = { attraction: 0.053, friction: 0.3 };
 		if (Number.isFinite(attraction) && attraction > 0 && attraction < 1) {
 			options.attraction = attraction;
 		}
@@ -737,15 +737,6 @@ class BottomSheet extends HTMLElement {
 			// sign flips. This is the whole point of the spring path: the settle
 			// leaves at the speed the finger was actually moving.
 			const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
-
-			// Temporary instrumentation for tuning the boost on-device.
-			// Must come out before this branch goes near main.
-			console.log('[bottom-sheet] spring seed', {
-				releasePxPerMs: Number(velocityY.toFixed(4)),
-				seedPerFrame: Number(seed.toFixed(3)),
-				travelPx: Number((_.#springTarget - startPx).toFixed(1)),
-				snap: value,
-			});
 
 			_.#engine.animateTo(startPx, _.#springTarget, seed);
 		} else if (dialog) {

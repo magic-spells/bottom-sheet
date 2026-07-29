@@ -435,7 +435,7 @@
 			const _ = this;
 			const [attraction, friction] = String(_.getAttribute("spring") ?? "").split(/[\s,]+/).map(Number);
 			const options = {
-				attraction: .05,
+				attraction: .053,
 				friction: .3
 			};
 			if (Number.isFinite(attraction) && attraction > 0 && attraction < 1) options.attraction = attraction;
@@ -844,12 +844,6 @@
 				dialog.style.transform = "";
 				_.#springTarget = value / 100 * window.innerHeight;
 				const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
-				console.log("[bottom-sheet] spring seed", {
-					releasePxPerMs: Number(velocityY.toFixed(4)),
-					seedPerFrame: Number(seed.toFixed(3)),
-					travelPx: Number((_.#springTarget - startPx).toFixed(1)),
-					snap: value
-				});
 				_.#engine.animateTo(startPx, _.#springTarget, seed);
 			} else if (dialog) {
 				dialog.classList.add("snapping");
