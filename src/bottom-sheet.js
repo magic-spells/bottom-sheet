@@ -261,6 +261,9 @@ class BottomSheet extends HTMLElement {
 				// sheet reopened after a drag-dismiss opens at its snap rather
 				// than animating out to it.
 				_.#applyRestingHeight();
+				// An open travels the full sheet height, so it keeps the shared
+				// duration even if the last settle was interrupted by the hide.
+				_.dialog?.classList.remove('snapping');
 				_.dialog?.classList.add('transitioning');
 			},
 		};
@@ -284,6 +287,9 @@ class BottomSheet extends HTMLElement {
 		// The inline height stays put — the hiding transform is a percentage of it.
 		if (this.dialog) {
 			this.dialog.style.transform = '';
+			// A dismiss is a close, not a settle. Left on, this would outrank
+			// the hiding rule and close the sheet at the snap duration.
+			this.dialog.classList.remove('snapping');
 		}
 		this.panel?.hide();
 	}
@@ -417,7 +423,7 @@ class BottomSheet extends HTMLElement {
 			startHeight,
 			belowLowest: 0,
 		};
-		dialog?.classList.remove('transitioning');
+		dialog?.classList.remove('transitioning', 'snapping');
 	}
 
 	/**
@@ -620,6 +626,10 @@ class BottomSheet extends HTMLElement {
 		// Written explicitly rather than left to the attribute reflection —
 		// re-committing the same snap still has to clear the drag's inline pixels
 		if (dialog) {
+			// Only a settle onto a snap is paced by the snap duration. Adding
+			// this in #dragEnd instead would also catch the drag-dismiss, where
+			// the extra class would outrank and speed up the closing transition.
+			dialog.classList.add('snapping');
 			dialog.style.transform = '';
 			dialog.style.height = `${value}dvh`;
 		}
@@ -646,7 +656,7 @@ class BottomSheet extends HTMLElement {
 			e.target === this.dialog &&
 			(e.propertyName === 'transform' || e.propertyName === 'height')
 		) {
-			this.dialog.classList.remove('transitioning');
+			this.dialog.classList.remove('transitioning', 'snapping');
 		}
 	}
 }

@@ -377,6 +377,7 @@
 						_.#backdropBound = true;
 					}
 					_.#applyRestingHeight();
+					_.dialog?.classList.remove("snapping");
 					_.dialog?.classList.add("transitioning");
 				}
 			};
@@ -394,7 +395,10 @@
 		* Hides the bottom sheet via dialog-panel
 		*/
 		hide() {
-			if (this.dialog) this.dialog.style.transform = "";
+			if (this.dialog) {
+				this.dialog.style.transform = "";
+				this.dialog.classList.remove("snapping");
+			}
 			this.panel?.hide();
 		}
 		connectedCallback() {
@@ -471,7 +475,7 @@
 				startHeight,
 				belowLowest: 0
 			};
-			dialog?.classList.remove("transitioning");
+			dialog?.classList.remove("transitioning", "snapping");
 		}
 		/**
 		* Applies resistance to a drag value to create a rubber-band effect
@@ -616,6 +620,7 @@
 			const from = _.#activeSnap;
 			const dialog = _.dialog;
 			if (dialog) {
+				dialog.classList.add("snapping");
 				dialog.style.transform = "";
 				dialog.style.height = `${value}dvh`;
 			}
@@ -634,7 +639,7 @@
 		* @param {TransitionEvent} e - The transition event
 		*/
 		#handleTransitionEnd(e) {
-			if (e.target === this.dialog && (e.propertyName === "transform" || e.propertyName === "height")) this.dialog.classList.remove("transitioning");
+			if (e.target === this.dialog && (e.propertyName === "transform" || e.propertyName === "height")) this.dialog.classList.remove("transitioning", "snapping");
 		}
 	};
 	var BottomSheetContent = class extends HTMLElement {

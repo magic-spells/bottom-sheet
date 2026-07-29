@@ -22,6 +22,14 @@
 	   trigger, so the motion must start at speed and settle — `ease` softens
 	   the start, which reads as a hitch when a drag hands off to the animation. */
 	--bs-transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
+	/* Settling onto a snap covers a fraction of the distance an open or a close
+	   does. Sharing one duration with them stretches that short move out until
+	   it reads as hesitation, so the settle is tuned on its own. Timing
+	   inherits until it is deliberately overridden — the default curve puts 90%
+	   of the travel in the first third and creeps through the rest, so this is
+	   the knob to reach for if the arrival still feels soft. */
+	--bs-snap-duration: 280ms;
+	--bs-snap-timing: var(--bs-transition-timing);
 	--bs-overlay-background: rgba(0, 0, 0, 0.5);
 	--bs-overlay-blur: 5px;
 }
@@ -104,6 +112,16 @@ dialog-panel:has(bottom-sheet) > dialog.transitioning {
 	transition:
 		transform var(--bs-transition-duration) var(--bs-transition-timing),
 		height var(--bs-transition-duration) var(--bs-transition-timing);
+}
+
+/* Settling onto a snap. Added by #commitSnap only, so it never reaches an open
+   or a close — both of which travel much further and keep the shared duration.
+   Its extra class also outranks the [state='hiding'] rule, which is exactly why
+   it must not be left on the dialog when a drag dismisses instead of snapping. */
+dialog-panel:has(bottom-sheet) > dialog.transitioning.snapping {
+	transition:
+		transform var(--bs-snap-duration) var(--bs-snap-timing),
+		height var(--bs-snap-duration) var(--bs-snap-timing);
 }
 
 /* ---- Snap points ----
