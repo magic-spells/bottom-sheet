@@ -1,133 +1,2413 @@
 <!doctype html>
 <html lang="en">
 	<head>
-		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Bottom Sheet — @magic-spells</title>
+		<!-- Inlined as a data URI so the repo stays binary-free and the browser's
+		     automatic /favicon.ico request never 404s. A rounded-top sheet with
+		     its handle bar — the component's own silhouette. -->
+		<link
+			rel="icon"
+			href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0708'/%3E%3Cpath d='M5 27V14c0-4 3-7 7-7h8c4 0 7 3 7 7v13z' fill='%23e8734a'/%3E%3Cpath d='M12 12h8' stroke='%23f6efe9' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" />
 
-		<title>bottom sheet test</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@200;300;400;500&display=swap"
+			rel="stylesheet" />
 
-		<link rel="stylesheet" href="./dialog-panel.css" />
-		<link rel="stylesheet" href="./bottom-sheet.min.css" />
+		<link rel="stylesheet" href="./vendor/dialog-panel.css" />
+		<link rel="stylesheet" href="./dist/bottom-sheet.css" />
 
 		<style>
-			body {
-				padding: 0px;
-				margin: 0px;
+			:root {
+				--bg-deep: #0c0708;
+				--bg-card: #150d0f;
+				--bg-card-hover: #1b1114;
+				--bg-well: #090506;
+				--border: #302024;
+				--border-accent: #55312d;
+
+				/* Approved accent. --ember carries edges, glows and rules; text uses
+				   --ember-text, one step lighter, because #e8734a lands at 6.6:1 on
+				   the card background and every text step on this page clears 7:1. */
+				--ember: #e8734a;
+				--ember-dim: #a94d32;
+				--ember-glow: rgba(232, 115, 74, 0.14);
+				--ember-text: #f28f63;
+
+				/* Text ramp — measured against --bg-card, the darkest surface any of
+				   these sit on: cream 15.2:1 · cream-dim 12.2:1 · text 13.4:1 ·
+				   text-dim 9.2:1 · ember-text 8.1:1. */
+				--cream: #f6efe9;
+				--cream-dim: #d8cbc3;
+				--text: #e7dcd5;
+				--text-dim: #c1b1aa;
+
+				--font-display: 'Cormorant Garamond', Georgia, serif;
+				--font-body: 'Outfit', system-ui, sans-serif;
+				--font-mono: 'Courier New', ui-monospace, monospace;
+
+				/* Component tokens — the same knobs documented in the reference below */
+				--bs-panel-background: #171012;
+				--bs-panel-max-height: 85vh;
+				--bs-panel-border-radius: 25px;
+				--bs-panel-box-shadow: 0 -18px 70px rgba(0, 0, 0, 0.55);
+				--bs-handle-color: #9a6a5a;
+				--bs-handle-width: 50px;
+				--bs-handle-height: 5px;
+				--bs-content-padding: 20px;
+				--bs-footer-padding: 20px;
+				--bs-footer-background: #1d1418;
+				--bs-transition-duration: 300ms;
+				--bs-transition-timing: ease;
+				--bs-overlay-background: rgba(5, 2, 3, 0.72);
+				--bs-overlay-blur: 6px;
+			}
+
+			* {
 				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
 			}
 
-			dialog-panel:has(bottom-sheet) > dialog {
-				left: 0;
-				right: 0;
-				width: 100%;
-				max-width: 600px;
-				margin: 0 auto;
+			html {
+				background: var(--bg-deep);
+				scroll-behavior: smooth;
 			}
 
-			bottom-sheet-header {
-				font-family: Helvetica, Arial, sans-serif;
-				font-size: 18px;
+			body {
+				min-width: 0;
+				color: var(--text);
+				background: var(--bg-deep);
+				font-family: var(--font-body);
+				font-weight: 300;
+				overflow-x: hidden;
+				-webkit-font-smoothing: antialiased;
 			}
 
-			.bottom-sheet-list {
-				list-style-type: none;
-				margin: 0px;
-				padding: 0px;
-				width: 100%;
+			/* ---- Noise overlay ---- */
+			body::before {
+				content: '';
+				position: fixed;
+				inset: 0;
+				z-index: 99999999;
+				pointer-events: none;
+				opacity: 0.025;
+				background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+				background-repeat: repeat;
+				background-size: 256px;
 			}
 
-			.bottom-sheet-list li {
-				margin-bottom: 16px;
-				padding: 16px;
-				background: lightblue;
-				height: 200px;
+			:where(a, button, [tabindex]):focus-visible {
+				outline: 2px solid var(--ember-text);
+				outline-offset: 3px;
 			}
 
-			.bottom-sheet-button-panel {
-				padding: 14px 20px;
+			/* ---- Hero ---- */
+			.hero {
+				position: relative;
+				padding: 4rem 1.5rem 2.5rem;
 				display: flex;
-				gap: 16px;
+				flex-direction: column;
+				align-items: center;
+				text-align: center;
+				overflow: hidden;
 			}
 
-			.bottom-sheet-button-panel button {
-				flex: 1;
-				appearance: none;
-				font-family: Helvetica, Arial, sans-serif;
-				background: white;
-				font-size: 15px;
-				font-weight: 500;
-				border-radius: 5px;
-				padding: 8px;
-				letter-spacing: 0.05em;
-			}
-
-			.bg-image {
-				width: 100%;
-				height: 100vh;
-				object-fit: cover;
-			}
-
-			.test-button {
-				appearance: none;
+			.hero::before {
+				content: '';
 				position: absolute;
-				top: 50%;
+				top: -38%;
 				left: 50%;
-				font-size: 16px;
-				font-weight: 600;
+				width: 1000px;
+				height: 900px;
+				max-width: 130vw;
+				transform: translateX(-50%);
+				background: radial-gradient(ellipse, var(--ember-glow), transparent 68%);
+				pointer-events: none;
+			}
+
+			/* The component's own affordance, borrowed as the page's opening mark. */
+			.hero-handle {
+				position: relative;
+				width: var(--bs-handle-width);
+				height: var(--bs-handle-height);
+				margin-bottom: 2.25rem;
+				background: var(--bs-handle-color);
+				border-radius: var(--bs-handle-height);
+			}
+
+			.hero-badge {
+				position: relative;
+				max-width: 100%;
+				margin-bottom: 2.25rem;
+				padding: 0.45em 1.25em;
+				color: var(--ember-text);
+				border: 1px solid var(--border-accent);
+				border-radius: 100px;
+				font-size: 0.95rem;
+				font-weight: 400;
+				letter-spacing: 0.1em;
+				text-decoration: none;
 				text-transform: uppercase;
-				border: 1px solid #8e4a00;
+				transition: border-color 0.3s ease;
+			}
+
+			.hero-badge:hover {
+				border-color: var(--ember-dim);
+			}
+
+			.hero h1 {
+				position: relative;
+				max-width: 11ch;
+				margin-bottom: 1.5rem;
+				color: var(--cream);
+				font-family: var(--font-display);
+				font-size: clamp(3.1rem, 10vw, 7.4rem);
+				font-weight: 300;
+				letter-spacing: -0.025em;
+				line-height: 0.95;
+			}
+
+			.hero h1 em {
+				color: var(--ember-text);
+				font-style: italic;
+				font-weight: 300;
+			}
+
+			.hero-tagline {
+				position: relative;
+				max-width: 600px;
+				font-size: 1.1rem;
+				line-height: 1.72;
+				text-wrap: pretty;
+			}
+
+			/* ---- Install ---- */
+			.install {
+				position: relative;
+				margin-top: 2.5rem;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 0.55rem;
+				max-width: 100%;
+			}
+
+			.install-label {
+				color: var(--text-dim);
+				font-size: 0.8rem;
+				font-weight: 400;
+				letter-spacing: 0.18em;
+				text-transform: uppercase;
+			}
+
+			.install-value {
+				max-width: calc(100vw - 2.5rem);
+				padding: 0.6em 1.1em;
+				color: var(--cream);
+				background: var(--bg-card);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				font-family: var(--font-mono);
+				font-size: clamp(0.76rem, 3.4vw, 0.94rem);
+				white-space: nowrap;
+				overflow-x: auto;
+				user-select: all;
+				cursor: copy;
+				transition:
+					border-color 0.3s ease,
+					color 0.3s ease;
+			}
+
+			.install-value:hover {
+				border-color: var(--ember-dim);
+			}
+
+			.install.copied .install-label {
+				color: var(--ember-text);
+			}
+
+			.install.copied .install-value {
+				color: var(--ember-text);
+				border-color: var(--ember-dim);
+			}
+
+			.uses {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.7rem;
+				margin-top: 0.9rem;
+			}
+
+			.uses-label {
+				color: var(--cream-faint, var(--cream-dim));
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				letter-spacing: 0.22em;
+				text-transform: uppercase;
+			}
+
+			.dep-badge {
+				display: inline-block;
+				padding: 0.32em 0.85em;
+				border: 1px solid var(--border-accent);
+				border-radius: 100px;
+				color: var(--cream);
+				font-family: var(--font-mono);
+				font-size: 0.82rem;
+				text-decoration: none;
+				transition:
+					color 0.25s ease,
+					border-color 0.25s ease;
+			}
+
+			.dep-badge:hover {
+				color: var(--ember-text);
+				border-color: var(--ember-dim);
+			}
+
+			.dep-scope {
+				opacity: 0.55;
+			}
+
+			.install-note {
+				color: var(--text-dim);
+				font-size: 0.86rem;
+			}
+
+			.install-note code {
+				color: var(--cream-dim);
+				font-family: var(--font-mono);
+				font-size: 0.94em;
+			}
+
+			.hero-line {
+				position: relative;
+				width: 1px;
+				height: 70px;
+				margin-top: 2.75rem;
+				background: linear-gradient(var(--ember-dim), transparent);
+			}
+
+			/* ---- Sections ---- */
+			.demos {
+				width: min(1080px, 100%);
+				margin: 0 auto;
+				padding: 1rem 1.25rem 6rem;
+				display: flex;
+				flex-direction: column;
+				gap: 3rem;
+			}
+
+			.demo-section {
+				min-width: 0;
+				padding: 2.5rem;
+				background: var(--bg-card);
+				border: 1px solid var(--border);
+				border-radius: 16px;
+				transition:
+					background 0.3s ease,
+					border-color 0.3s ease;
+			}
+
+			.demo-section:hover {
+				background: var(--bg-card-hover);
+				border-color: var(--border-accent);
+			}
+
+			/* ---- Spec bar ----
+			   The eyebrow is a measurement, not an ordinal: each section is labelled
+			   with the actual constant or quantity it teaches, read off like a gauge. */
+			.spec {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.5rem 0.85rem;
+				margin-bottom: 1.35rem;
+			}
+
+			.spec-key {
+				color: var(--ember-text);
+				font-family: var(--font-mono);
+				font-size: 0.8rem;
+				letter-spacing: 0.22em;
+				text-transform: uppercase;
+			}
+
+			.spec-rule {
+				flex: 1 1 1.5rem;
+				min-width: 1.5rem;
+				height: 1px;
+				background: linear-gradient(to right, var(--border-accent), var(--border) 65%, transparent);
+			}
+
+			.spec-val {
+				color: var(--cream-dim);
+				font-family: var(--font-mono);
+				font-size: 0.8rem;
+				letter-spacing: 0.04em;
+				white-space: nowrap;
+			}
+
+			.demo-section h2 {
+				margin-bottom: 1rem;
+				color: var(--cream);
+				font-family: var(--font-display);
+				font-size: clamp(2rem, 5vw, 3.1rem);
+				font-weight: 400;
+				letter-spacing: -0.01em;
+				line-height: 1.08;
+			}
+
+			.demo-section h2 em {
+				color: var(--ember-text);
+				font-style: italic;
+				font-weight: 400;
+			}
+
+			.demo-desc {
+				max-width: 700px;
+				margin-bottom: 1.6rem;
+				font-size: 1.07rem;
+				line-height: 1.72;
+				text-wrap: pretty;
+			}
+
+			.demo-desc + .demo-desc {
+				margin-top: -0.9rem;
+			}
+
+			.demo-desc code,
+			.sheet-copy code,
+			.ref-note code {
+				color: var(--cream);
+				font-family: var(--font-mono);
+				font-size: 0.94em;
+			}
+
+			.demo-desc strong {
+				color: var(--cream);
+				font-weight: 400;
+			}
+
+			/* ---- Stage ---- */
+			.stage {
+				min-width: 0;
+				padding: 2rem;
+				background:
+					radial-gradient(ellipse at 50% 130%, var(--ember-glow), transparent 60%),
+					linear-gradient(135deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.035));
+				border: 1px solid var(--border);
+				border-radius: 12px;
+			}
+
+			.stage-row {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.9rem 1.25rem;
+			}
+
+			.controls {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.75rem;
+			}
+
+			.btn,
+			.close-btn {
+				color: var(--cream);
+				background: transparent;
+				border: 1px solid var(--border-accent);
+				font: inherit;
+				cursor: pointer;
+			}
+
+			.btn {
+				padding: 0.65em 1.45em;
+				border-radius: 100px;
+				font-size: 0.95rem;
+				font-weight: 400;
+				letter-spacing: 0.09em;
+				text-transform: uppercase;
+				transition:
+					color 0.25s ease,
+					border-color 0.25s ease;
+			}
+
+			.btn:hover,
+			.close-btn:hover {
+				color: var(--ember-text);
+				border-color: var(--ember-dim);
+			}
+
+			.btn:active {
+				transform: translateY(1px);
+			}
+
+			.readout {
+				min-width: min(100%, 280px);
+				color: var(--cream-dim);
+				font-family: var(--font-mono);
+				font-size: 0.9rem;
+				line-height: 1.5;
+				/* the readouts write two lines with a \n */
+				white-space: pre-line;
+			}
+
+			/* ---- Theme playground ---- */
+			.theme-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+				gap: 0.5rem 2rem;
+				margin-top: 1.5rem;
+				padding: 1.4rem 1.5rem;
+				border: 1px solid var(--border);
+				border-radius: 12px;
+			}
+
+			.theme-row {
+				display: grid;
+				grid-template-columns: 1fr auto 4.5ch;
+				align-items: center;
+				gap: 0.9rem;
+				padding: 0.32rem 0;
+				cursor: pointer;
+			}
+
+			.theme-label {
+				color: var(--cream-dim);
+				font-size: 0.85rem;
+				letter-spacing: 0.04em;
+			}
+
+			.theme-value {
+				color: var(--ember-text);
+				font-family: var(--font-mono);
+				font-size: 0.78rem;
+				text-align: right;
+			}
+
+			/* the color and checkbox rows have nothing in the third column */
+			.theme-row:has(input[type='color']) {
+				grid-template-columns: 1fr auto;
+			}
+
+			.theme-row input[type='range'] {
+				width: 110px;
+				height: 2px;
+				appearance: none;
+				background: var(--border-accent);
+				border-radius: 2px;
+				cursor: pointer;
+			}
+
+			.theme-row input[type='range']::-webkit-slider-thumb {
+				width: 13px;
+				height: 13px;
+				appearance: none;
+				background: var(--ember-text);
+				border-radius: 50%;
+				cursor: pointer;
+			}
+
+			.theme-row input[type='range']::-moz-range-thumb {
+				width: 13px;
+				height: 13px;
+				background: var(--ember-text);
+				border: none;
+				border-radius: 50%;
+				cursor: pointer;
+			}
+
+			.theme-row input[type='color'] {
+				width: 42px;
+				height: 24px;
+				padding: 0;
+				background: transparent;
+				border: 1px solid var(--border-accent);
 				border-radius: 5px;
-				transform: translate3d(-50%, -50%, 0);
-				padding: 12px 20px;
-				font-family: Helvetica, arial;
+				cursor: pointer;
+			}
+
+			/* Toggle switch built on the native checkbox, so it keeps keyboard
+			   operation and the label association for free */
+			.theme-row input[type='checkbox'] {
+				width: 34px;
+				height: 19px;
+				appearance: none;
+				position: relative;
+				background: var(--border-accent);
+				border-radius: 100px;
+				cursor: pointer;
+				transition: background 0.22s ease;
+			}
+
+			.theme-row input[type='checkbox']::after {
+				content: '';
+				position: absolute;
+				top: 2px;
+				left: 2px;
+				width: 15px;
+				height: 15px;
+				background: var(--cream-dim);
+				border-radius: 50%;
+				transition:
+					transform 0.22s ease,
+					background 0.22s ease;
+			}
+
+			.theme-row input[type='checkbox']:checked {
+				background: var(--ember-dim);
+			}
+
+			.theme-row input[type='checkbox']:checked::after {
+				background: var(--cream);
+				transform: translateX(15px);
+			}
+
+			.theme-row input[type='checkbox']:focus-visible {
+				outline: 2px solid var(--ember-text);
+				outline-offset: 2px;
+			}
+
+			/* ---- Code ---- */
+			.code-block {
+				max-width: 100%;
+				margin-top: 1.5rem;
+				padding: 1.25rem 1.4rem;
+				color: var(--text);
+				background: var(--bg-well);
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				font-family: var(--font-mono);
+				font-size: 0.82rem;
+				line-height: 1.75;
+				overflow-x: auto;
+				white-space: pre;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			.hl-tag {
+				color: var(--ember-text);
+			}
+
+			.hl-attr {
+				color: #c8a9e5;
+			}
+
+			.hl-val {
+				color: #efb092;
+			}
+
+			.hl-cm {
+				color: var(--text-dim);
+				font-style: italic;
+			}
+
+			.event-log {
+				height: 158px;
+				margin-top: 1rem;
+				padding: 1rem;
+				color: var(--cream-dim);
+				background: var(--bg-well);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				font-family: var(--font-mono);
+				font-size: 0.86rem;
+				line-height: 1.6;
+				overflow: auto;
+				white-space: pre-wrap;
+			}
+
+			/* ---- Reference tables ---- */
+			.ref-heading {
+				margin: 2.25rem 0 0.85rem;
+				color: var(--ember-text);
+				font-family: var(--font-mono);
+				font-size: 0.8rem;
+				font-weight: 400;
+				letter-spacing: 0.2em;
+				text-transform: uppercase;
+			}
+
+			.ref-table {
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				overflow: hidden;
+			}
+
+			.ref-row {
+				display: grid;
+				grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 2fr);
+				gap: 1rem;
+				padding: 0.8rem 1rem;
+				border-top: 1px solid var(--border);
+				font-size: 0.94rem;
+				line-height: 1.55;
+				align-items: baseline;
+			}
+
+			.ref-row:first-child {
+				border-top: 0;
+			}
+
+			.ref-head {
+				color: var(--cream-dim);
+				background: rgba(0, 0, 0, 0.24);
+				font-size: 0.8rem;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+			}
+
+			.ref-row code {
+				color: var(--cream);
+				font-family: var(--font-mono);
+				font-size: 0.84rem;
+				overflow-wrap: anywhere;
+			}
+
+			.ref-note {
+				max-width: 700px;
+				margin-top: 0.4rem;
+				font-size: 1.02rem;
+				line-height: 1.72;
+			}
+
+			/* ---- Site footer ---- */
+			.site-foot {
+				width: min(1080px, calc(100% - 2.5rem));
+				margin: 0 auto;
+				padding: 2rem 1.5rem 4rem;
+				border-top: 1px solid var(--border);
+				color: var(--text-dim);
+				font-family: var(--font-mono);
+				font-size: 0.86rem;
+				letter-spacing: 0.05em;
+				text-align: center;
+			}
+
+			.site-foot a {
+				color: var(--ember-text);
+				text-decoration: none;
+				border-bottom: 1px solid transparent;
+				transition: border-color 0.25s ease;
+			}
+
+			.site-foot a:hover {
+				border-bottom-color: var(--ember-dim);
+			}
+
+			/* ---- Sheet interiors ---- */
+			.sheet-header {
+				min-height: 78px;
+				padding-top: 26px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 1rem;
+				border-bottom: 1px solid var(--border);
+			}
+
+			.sheet-header h3 {
+				color: var(--cream);
+				font-family: var(--font-display);
+				font-size: clamp(1.5rem, 6vw, 2.1rem);
+				font-weight: 400;
+				line-height: 1.15;
+			}
+
+			.close-btn {
+				flex: 0 0 auto;
+				width: 38px;
+				height: 38px;
+				border-radius: 50%;
+				font-size: 1.45rem;
+				line-height: 1;
+			}
+
+			.sheet-copy {
+				padding-top: 1.5rem;
+				padding-bottom: 2rem;
+				color: var(--text);
+				font-size: 1.05rem;
+				line-height: 1.7;
+			}
+
+			.sheet-copy p + p,
+			.sheet-copy ul + p,
+			.sheet-copy .cart-line + p {
+				margin-top: 1rem;
+			}
+
+			/* Search field inside a drag-surface header. The header takes
+			   touch-action: none, so the field needs its own gesture allowance
+			   or text selection and the caret fight the drag. */
+			.sheet-search {
+				width: 100%;
+				margin: 0 0 1rem;
+				padding: 0.6em 0.9em;
+				color: var(--cream);
+				background: rgba(255, 255, 255, 0.04);
+				border: 1px solid var(--border-accent);
+				border-radius: 8px;
+				font: inherit;
+				font-size: 0.92rem;
+				touch-action: auto;
+			}
+
+			.sheet-search::placeholder {
+				color: var(--cream-dim);
+				opacity: 0.7;
+			}
+
+			.long-list {
+				list-style: none;
+			}
+
+			.long-list li {
+				padding: 0.95rem 0;
+				border-bottom: 1px solid var(--border);
+				font-family: var(--font-mono);
+				font-size: 0.95rem;
+				color: var(--cream-dim);
+			}
+
+			bottom-sheet-footer {
+				border-top: 1px solid var(--border);
+			}
+
+			.cart-line {
+				display: flex;
+				justify-content: space-between;
+				gap: 1rem;
+				padding: 1rem 0;
+				border-bottom: 1px solid var(--border);
+			}
+
+			.cart-name {
+				color: var(--cream);
+			}
+
+			.cart-detail {
+				display: block;
+				color: var(--text-dim);
+				font-size: 0.9rem;
+			}
+
+			.cart-price {
+				flex: 0 0 auto;
+				color: var(--cream-dim);
+				font-family: var(--font-mono);
+				font-size: 0.95rem;
+			}
+
+			.cart-total {
+				display: flex;
+				align-items: baseline;
+				justify-content: space-between;
+				gap: 1rem;
+				margin-bottom: 0.9rem;
+			}
+
+			.cart-total-label {
+				color: var(--text-dim);
+				font-size: 0.85rem;
+				letter-spacing: 0.16em;
+				text-transform: uppercase;
+			}
+
+			.cart-total-value {
+				color: var(--cream);
+				font-family: var(--font-display);
+				font-size: 1.75rem;
+			}
+
+			.btn-solid {
+				display: block;
+				width: 100%;
+				padding: 0.9em 1.2em;
+				/* inverted pairing — near-black on ember-text clears 8.2:1 */
+				color: #160b06;
+				background: var(--ember-text);
+				border: 1px solid var(--ember-text);
+				border-radius: 12px;
+				font: inherit;
+				font-size: 1rem;
 				font-weight: 500;
-				letter-spacing: 0.6px;
-				background: #c96900;
-				color: white;
-				text-shadow: 0px 1px 5px rgba(0, 0, 0, 0.25);
+				letter-spacing: 0.06em;
+				cursor: pointer;
+				transition: background 0.25s ease;
+			}
+
+			.btn-solid:hover {
+				background: #f7a179;
+				border-color: #f7a179;
+			}
+
+			/* ---- Responsive ---- */
+			@media (max-width: 640px) {
+				.hero {
+					padding-inline: 1rem;
+				}
+
+				.demos {
+					padding-inline: 0.75rem;
+					gap: 2.25rem;
+				}
+
+				.demo-section {
+					padding: 1.75rem 1rem;
+				}
+
+				.stage {
+					padding: 1.25rem 1rem;
+				}
+
+				.ref-row {
+					grid-template-columns: 1fr;
+					gap: 0.3rem;
+				}
+
+				.ref-head {
+					display: none;
+				}
+
+				.code-block {
+					padding-inline: 1rem;
+					font-size: 0.76rem;
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				html {
+					scroll-behavior: auto;
+				}
+
+				.demo-section,
+				.btn,
+				.btn-solid,
+				.hero-badge,
+				.install-value,
+				.site-foot a {
+					transition: none;
+				}
+
+				.btn:active {
+					transform: none;
+				}
 			}
 		</style>
 	</head>
 	<body>
-		<img class="bg-image" src="./bg-image.jpg" style="width: 100%" />
+		<!-- ======== HERO ======== -->
+		<header class="hero">
+			<div class="hero-handle" aria-hidden="true"></div>
+			<a class="hero-badge" href="https://github.com/magic-spells/bottom-sheet"
+				>@magic-spells/bottom-sheet</a
+			>
+			<h1>A sheet with <em>momentum</em>.</h1>
+			<p class="hero-tagline">
+				A bottom sheet built on the native dialog. It follows the pointer, dismisses on a flick,
+				steps aside for scrolling content, and keeps its footer above the safe area.
+			</p>
 
-		<button id="show-bottom-sheet-button" class="test-button">Show bottom sheet</button>
+			<div class="install">
+				<span class="install-label" id="install-label">Install</span>
+				<code class="install-value" id="install-value" title="Click to copy"
+					>npm install @magic-spells/bottom-sheet</code
+				>
+				<div class="uses">
+					<span class="uses-label">Uses</span>
+					<a
+						class="dep-badge"
+						href="https://github.com/magic-spells/dialog-panel"
+						target="_blank"
+						rel="noopener"
+						><span class="dep-scope">@magic-spells/</span>dialog-panel</a
+					>
+				</div>
+			</div>
 
-		<dialog-panel id="sheet-dialog">
-			<dialog>
+			<div class="hero-line" aria-hidden="true"></div>
+		</header>
+
+		<!-- ======== SECTIONS ======== -->
+		<main class="demos">
+			<!-- ---- Anatomy ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Anatomy</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">3 nested elements</span>
+				</div>
+				<h2>Three layers, and only one of them moves.</h2>
+				<p class="demo-desc">
+					<code>&lt;dialog-panel&gt;</code> owns the modal layer — focus trap, Escape, backdrop,
+					body scroll lock. The native <code>&lt;dialog&gt;</code> is the surface that slides.
+					<code>&lt;bottom-sheet&gt;</code> sits inside it and turns pointer gestures into a
+					transform on that surface.
+				</p>
+				<p class="demo-desc">
+					Inside the sheet, <strong>the header is the drag handle</strong> — it draws the rounded
+					bar and takes <code>touch-action: none</code> so a downward drag never gets read as a
+					scroll. The content below it flexes and scrolls on its own.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="basic-panel">Open the basic sheet</button>
+				</div>
+				<pre
+					class="code-block">&lt;<span class="hl-tag">dialog-panel</span> <span class="hl-attr">id</span>=<span class="hl-val">"sheet-panel"</span>&gt;
+  &lt;<span class="hl-tag">dialog</span> <span class="hl-attr">aria-labelledby</span>=<span class="hl-val">"sheet-title"</span>&gt;
+    &lt;<span class="hl-tag">bottom-sheet</span>&gt;
+      &lt;<span class="hl-tag">bottom-sheet-header</span>&gt;
+        &lt;<span class="hl-tag">h2</span> <span class="hl-attr">id</span>=<span class="hl-val">"sheet-title"</span>&gt;A useful title&lt;/<span class="hl-tag">h2</span>&gt;
+        &lt;<span class="hl-tag">button</span> <span class="hl-attr">data-action-hide-dialog</span> <span class="hl-attr">aria-label</span>=<span class="hl-val">"Close"</span>&gt;&amp;times;&lt;/<span class="hl-tag">button</span>&gt;
+      &lt;/<span class="hl-tag">bottom-sheet-header</span>&gt;
+      &lt;<span class="hl-tag">bottom-sheet-content</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet-content</span>&gt;
+    &lt;/<span class="hl-tag">bottom-sheet</span>&gt;
+  &lt;/<span class="hl-tag">dialog</span>&gt;
+&lt;/<span class="hl-tag">dialog-panel</span>&gt;
+
+<span class="hl-cm">// the trigger is passed in so focus returns to it on close</span>
+sheet.show(trigger)</pre>
+			</section>
+
+			<!-- ---- Release ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Release</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">0.5 px/ms · 100px</span>
+				</div>
+				<h2>Let go, and the sheet <em>decides</em>.</h2>
+				<p class="demo-desc">
+					Two independent rules run on release, and either one dismisses.
+					<strong>A flick</strong> only needs speed: downward velocity above <code>0.5 px/ms</code>,
+					measured over the last 100ms of the gesture, so a short sharp swipe closes without
+					travelling far. <strong>A pull</strong> only needs distance: more than
+					<code>100px</code> down, with release velocity still above <code>-0.05 px/ms</code> — that
+					second clause is what lets you change your mind. Drag past the threshold, reverse upward,
+					and the sheet snaps home.
+				</p>
+				<p class="demo-desc">
+					Cancelled gestures always snap back. Upward drags never dismiss; they get a square-root
+					rubber band instead of tracking the pointer one-to-one.
+				</p>
+				<p class="demo-desc">
+					<strong>Both rules are conditional once snap points exist.</strong> On a snapping sheet a
+					flick doesn't dismiss — it steps one snap in its own direction, and only runs out of snaps
+					at the shortest one. The 100px pull is measured below that shortest snap rather than from
+					wherever the sheet happened to be sitting.
+				</p>
+				<div class="stage stage-row">
+					<button class="btn" data-open="flick-panel">Try a flick</button>
+					<output class="readout" id="release-readout">Waiting for a release…</output>
+				</div>
+				<pre
+					class="code-block"><span class="hl-cm">// bottom-sheet.js — either rule dismisses</span>
+<span class="hl-tag">const</span> flick    = velocityY &gt; <span class="hl-val">0.5</span>;
+<span class="hl-tag">const</span> pastPull = deltaY &gt; <span class="hl-val">100</span> &amp;&amp; velocityY &gt; <span class="hl-val">-0.05</span>;
+
+<span class="hl-tag">if</span> (flick || pastPull) sheet.hide();
+<span class="hl-tag">else</span> dialog.style.transform = <span class="hl-val">''</span>; <span class="hl-cm">// snap back</span></pre>
+			</section>
+
+			<!-- ---- Handoff ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Handoff</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">mid-gesture</span>
+				</div>
+				<h2>The list runs out, and the panel picks it up.</h2>
+				<p class="demo-desc">
+					A sheet full of list items has two plausible readings of a downward drag: scroll the list,
+					or move the panel. The sheet re-asks that question on <strong>every move</strong> until
+					one of them wins, so the answer can change part way through a single continuous gesture.
+					Scroll up through the list, hit the top, and keep pulling — the panel takes over from
+					there without you lifting a finger.
+				</p>
+				<p class="demo-desc">
+					The distance already travelled is recorded as <code>claimOffset</code> at the moment of
+					the handoff and subtracted from everything after it. Without that the panel would jump by
+					however far you'd already scrolled. Once the panel has claimed a gesture it keeps it until
+					release — the handoff only ever runs one way.
+				</p>
+				<p class="demo-desc">
+					<code>deltaY</code> is cumulative, so its sign only reports where the pointer sits
+					relative to where it started. The claim test needs to know which way it's travelling
+					<em>right now</em>, which is why <code>DragGesture</code> reports <code>moveY</code>
+					alongside it.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="scroll-panel">Open the long list</button>
+				</div>
+				<pre
+					class="code-block"><span class="hl-cm">// re-asked on every move until it succeeds</span>
+<span class="hl-tag">if</span> (moveY &gt; <span class="hl-val">0</span>) <span class="hl-tag">return</span> content.scrollTop === <span class="hl-val">0</span>;  <span class="hl-cm">// hand off at the top</span>
+
+<span class="hl-cm">// upward: below the tallest snap, growing beats scrolling</span>
+<span class="hl-tag">return</span> snaps.length &gt; <span class="hl-val">0</span> &amp;&amp; activeSnap &lt; snaps.at(<span class="hl-val">-1</span>);
+
+<span class="hl-cm">// on the move that wins, remember where it started</span>
+drag.claimOffset = deltaY;
+<span class="hl-tag">const</span> travel = deltaY - drag.claimOffset;</pre>
+			</section>
+
+			<!-- ---- Snap points ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Snap</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">40 · 70 · 90 dvh</span>
+				</div>
+				<h2>Three resting heights, and the sheet picks one.</h2>
+				<p class="demo-desc">
+					Give the sheet <code>snap-points="40,70,90"</code> and it stops being a two-state thing.
+					Each number is a percentage of the viewport height, and it becomes the
+					<strong>height</strong> of the dialog rather than a distance to push it down by. That
+					choice is what keeps the footer pinned to the bottom edge at every snap and keeps the
+					scrollable region exactly as tall as the part you can actually see.
+				</p>
+				<p class="demo-desc">
+					On release, a flick steps exactly one snap in its own direction — never two, however hard
+					you throw it — and anything slower lands on whichever snap is nearest. Stepping is
+					measured from where the sheet <em>is</em>, not from the snap the gesture started at, so
+					dragging from 40 up past 90 and flicking up doesn't fall backwards to 70.
+				</p>
+				<p class="demo-desc">
+					Dragging below the shortest snap stops being a resize and becomes the ordinary dismiss
+					gesture, on the same transform path a sheet with no snap points uses. That's the only
+					place the sheet can close from.
+				</p>
+				<p class="demo-desc">
+					The resting height is written as a <code>dvh</code> string rather than pixels, so rotating
+					the device or opening the URL bar re-resolves it for free — there's no resize listener
+					behind this at all.
+				</p>
+				<div class="stage stage-row">
+					<button class="btn" data-open="snap-panel">Open the snapping sheet</button>
+					<output class="readout" id="snap-readout">Not open yet…</output>
+				</div>
+				<pre
+					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"40,70,90"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;
+
+<span class="hl-cm">// the current snap reflects back, on commit only</span>
+sheet.snap          <span class="hl-cm">// 70</span>
+sheet.snapPoints    <span class="hl-cm">// [40, 70, 90]</span>
+sheet.snapTo(<span class="hl-val">90</span>);
+
+sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
+  console.log(e.detail); <span class="hl-cm">// { from: 70, to: 90 }</span>
+});</pre>
+			</section>
+
+			<!-- ---- Map-style composite ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Composite</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">25 · 55 · 92 dvh</span>
+				</div>
+				<h2>All of it, doing one job.</h2>
+				<p class="demo-desc">
+					The mechanics above are easier to trust when they're not in isolation. This is the shape
+					every maps app converges on: a sheet that opens at a peek, a search field in the fixed
+					header, and a results list that scrolls once there's room for it to.
+				</p>
+				<p class="demo-desc">
+					At the 25dvh peek there's barely a list to scroll, so dragging <strong>up</strong> on the
+					content grows the sheet instead of scrolling it — you expand first, then scroll, which is
+					the behaviour your thumb already expects. Only at the tallest snap does an upward drag go
+					back to being an ordinary scroll. A sheet with no snap points declared never takes that
+					branch, so nothing about this changes the plain case.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="map-panel">Open the peek</button>
+				</div>
+				<pre
+					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"25,55,92"</span> <span class="hl-attr">snap</span>=<span class="hl-val">"25"</span>&gt;
+  &lt;<span class="hl-tag">bottom-sheet-header</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet-header</span>&gt;   <span class="hl-cm">/* search field  */</span>
+  &lt;<span class="hl-tag">bottom-sheet-content</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet-content</span>&gt; <span class="hl-cm">/* results       */</span>
+&lt;/<span class="hl-tag">bottom-sheet</span>&gt;
+
+<span class="hl-cm">// snap= sets the opening height; it reflects after that</span></pre>
+			</section>
+
+			<!-- ---- Footer ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Footer</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">flex-shrink: 0</span>
+				</div>
+				<h2>A floor that never travels.</h2>
+				<p class="demo-desc">
+					Add <code>&lt;bottom-sheet-footer&gt;</code> and the sheet becomes a three-part column.
+					<strong>Header and footer are fixed</strong> — both are <code>flex-shrink: 0</code> — and
+					only the content between them flexes and scrolls. Scroll the items below and the checkout
+					bar stays exactly where your thumb expects it.
+				</p>
+				<p class="demo-desc">
+					The footer also takes over the safe area. Without one, the dialog pads itself by
+					<code>env(safe-area-inset-bottom)</code>; the moment a footer appears, that padding moves
+					into the footer instead, so its background runs all the way to the bottom edge of the
+					screen rather than stopping short of the home indicator. Tune the inset with
+					<code>--bs-footer-padding</code> — the safe area is added below whatever you set.
+				</p>
+				<p class="demo-desc">
+					The footer is a drag surface too, so the sheet is still dismissible from the one part of
+					it that's always within reach.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="footer-panel">Open the bag</button>
+				</div>
+				<pre class="code-block">&lt;<span class="hl-tag">bottom-sheet</span>&gt;
+  &lt;<span class="hl-tag">bottom-sheet-header</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet-header</span>&gt;   <span class="hl-cm">/* fixed  · drag surface */</span>
+  &lt;<span class="hl-tag">bottom-sheet-content</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet-content</span>&gt; <span class="hl-cm">/* flex: 1 · scrolls     */</span>
+  &lt;<span class="hl-tag">bottom-sheet-footer</span>&gt;
+    &lt;<span class="hl-tag">button</span>&gt;Checkout&lt;/<span class="hl-tag">button</span>&gt;
+  &lt;/<span class="hl-tag">bottom-sheet-footer</span>&gt;  <span class="hl-cm">/* fixed · owns the safe area */</span>
+&lt;/<span class="hl-tag">bottom-sheet</span>&gt;
+
+<span class="hl-cm">/* bottom-sheet.css */</span>
+<span class="hl-tag">bottom-sheet-footer</span> {
+  <span class="hl-attr">padding</span>: <span class="hl-val">var(--bs-footer-padding, var(--bs-content-padding))</span>;
+  <span class="hl-attr">padding-bottom</span>: <span class="hl-val">calc(var(--bs-footer-padding, var(--bs-content-padding)) + env(safe-area-inset-bottom, 0px))</span>;
+}</pre>
+			</section>
+
+			<!-- ---- Inset ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Inset</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">detached · all corners</span>
+				</div>
+				<h2>Lift it off the edges.</h2>
+				<p class="demo-desc">
+					Add the <code>inset</code> attribute and the sheet stops being welded to the bottom of the
+					screen: all four corners take <code>--bs-panel-border-radius</code>, and
+					<code>--bs-panel-inset-x</code> and <code>--bs-panel-inset-bottom</code> open a gap on
+					three sides. It's pure CSS — <code>:has(bottom-sheet[inset])</code> does the whole thing
+					and no JavaScript runs.
+				</p>
+				<p class="demo-desc">
+					<strong>The off-screen position has to be corrected too.</strong> The hidden state
+					translates the sheet down by <code>100%</code>, which is only the panel's own height — the
+					moment there's a gap beneath it, that leaves the sheet peeking above the bottom edge by
+					exactly the inset. The inset rules add the gap and the safe area back into that
+					translation.
+				</p>
+				<p class="demo-desc">
+					The footer needs a second correction. Normally it absorbs
+					<code>env(safe-area-inset-bottom)</code> so its background runs under the home indicator,
+					but a floating sheet's bottom margin already clears that — left alone you'd get the gap
+					twice.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="inset-panel">Open the floating sheet</button>
+				</div>
+				<pre
+					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">inset</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;
+
+<span class="hl-tag">dialog-panel</span>:has(<span class="hl-tag">bottom-sheet</span>[<span class="hl-attr">inset</span>]) &gt; <span class="hl-tag">dialog</span> {
+  <span class="hl-attr">left</span>:  <span class="hl-val">var(--bs-panel-inset-x)</span>;
+  <span class="hl-attr">right</span>: <span class="hl-val">var(--bs-panel-inset-x)</span>;
+  <span class="hl-attr">width</span>: <span class="hl-val">auto</span>;
+  <span class="hl-attr">border-radius</span>: <span class="hl-val">var(--bs-panel-border-radius)</span>;
+  <span class="hl-attr">margin-bottom</span>: <span class="hl-val">calc(var(--bs-panel-inset-bottom) + env(safe-area-inset-bottom, 0px))</span>;
+}
+
+<span class="hl-cm">/* or it peeks by exactly the inset when hidden */</span>
+<span class="hl-attr">transform</span>: <span class="hl-val">translate3d(0, calc(100% + var(--bs-panel-inset-bottom) + env(safe-area-inset-bottom, 0px)), 0)</span>;</pre>
+			</section>
+
+			<!-- ---- Inset + snap ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Combined</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">inset + snap-points</span>
+				</div>
+				<h2>Floating, and still snapping.</h2>
+				<p class="demo-desc">
+					The two features touch the same element from opposite directions — one rewrites the
+					dialog's off-screen transform, the other drives its height every frame of a drag. This is
+					the combination most likely to break, so it gets its own sheet.
+				</p>
+				<p class="demo-desc">
+					One honest quirk: with a bottom gap, <code>height: 70dvh</code> puts the top edge at
+					<code>100 − 70 − inset</code> from the bottom of the screen, so a floating sheet at a
+					given snap sits slightly higher than an edge-anchored one at the same snap. Height is
+					height — the snap describes the sheet, not the gap under it.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="inset-snap-panel">Open both at once</button>
+				</div>
+				<pre
+					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">inset</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"35,65,88"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;</pre>
+			</section>
+
+			<!-- ---- Display limit ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Limit</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">max-display-width 768</span>
+				</div>
+				<h2>Above a certain width, it declines.</h2>
+				<p class="demo-desc">
+					A sheet anchored to the bottom edge stops making sense on a wide screen. Set
+					<code>max-display-width="768"</code> and the component enforces the boundary from both
+					sides: <code>show()</code> returns early above the limit, and a throttled resize listener
+					closes an already-open sheet the moment the viewport crosses it.
+				</p>
+				<p class="demo-desc">
+					Narrow this window under 768px and open it, then widen the window and watch it leave.
+				</p>
+				<div class="stage stage-row">
+					<button class="btn" data-open="width-panel">Open below 768px</button>
+					<output class="readout" id="width-readout">Measuring the viewport…</output>
+				</div>
+				<pre
+					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">max-display-width</span>=<span class="hl-val">"768"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;
+
+<span class="hl-cm">// or from script — Infinity removes the limit</span>
+sheet.maxDisplayWidth = <span class="hl-val">768</span>;
+sheet.maxDisplayWidth = Infinity;</pre>
+			</section>
+
+			<!-- ---- Theming ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Theme</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">--bs-*</span>
+				</div>
+				<h2>Every hook, on one sheet.</h2>
+				<p class="demo-desc">
+					The reference table further down lists the custom properties; this one lets you turn them.
+					Nothing here is a component API — the controls write plain
+					<code>style.setProperty</code> calls onto the <code>&lt;dialog-panel&gt;</code>, and
+					inheritance carries them to the dialog, the handle, the padding, and the backdrop.
+				</p>
+				<p class="demo-desc">
+					That's worth knowing on its own: because every hook is an inherited custom property, you
+					can theme one sheet without touching any of the others, and without a single selector of
+					your own. Set the dials first — an open modal makes everything behind it inert, so these
+					controls are unreachable while the sheet is up.
+				</p>
+				<div class="theme-grid">
+					<label class="theme-row">
+						<span class="theme-label">Panel background</span>
+						<input type="color" data-prop="--bs-panel-background" value="#171012" />
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Handle color</span>
+						<input type="color" data-prop="--bs-handle-color" value="#9a6a5a" />
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Corner radius</span>
+						<input
+							type="range"
+							data-prop="--bs-panel-border-radius"
+							data-unit="px"
+							min="0"
+							max="48"
+							value="25" />
+						<span class="theme-value">25px</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Handle width</span>
+						<input
+							type="range"
+							data-prop="--bs-handle-width"
+							data-unit="px"
+							min="20"
+							max="140"
+							value="50" />
+						<span class="theme-value">50px</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Handle height</span>
+						<input
+							type="range"
+							data-prop="--bs-handle-height"
+							data-unit="px"
+							min="2"
+							max="14"
+							value="5" />
+						<span class="theme-value">5px</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Content padding</span>
+						<input
+							type="range"
+							data-prop="--bs-content-padding"
+							data-unit="px"
+							min="0"
+							max="48"
+							value="20" />
+						<span class="theme-value">20px</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Content padding · vertical</span>
+						<input
+							type="range"
+							data-prop="--bs-content-padding-block"
+							data-unit="px"
+							min="0"
+							max="48"
+							value="0" />
+						<span class="theme-value">0px</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Transition</span>
+						<input
+							type="range"
+							data-prop="--bs-transition-duration"
+							data-unit="ms"
+							min="80"
+							max="900"
+							step="10"
+							value="300" />
+						<span class="theme-value">300ms</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Overlay blur</span>
+						<input
+							type="range"
+							data-prop="--bs-overlay-blur"
+							data-unit="px"
+							min="0"
+							max="24"
+							value="6" />
+						<span class="theme-value">6px</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Overlay opacity</span>
+						<input type="range" id="theme-overlay" min="0" max="95" value="72" />
+						<span class="theme-value">0.72</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Inset · sides</span>
+						<input
+							type="range"
+							data-prop="--bs-panel-inset-x"
+							data-unit="px"
+							min="0"
+							max="48"
+							value="12" />
+						<span class="theme-value">12px</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Inset · bottom</span>
+						<input
+							type="range"
+							data-prop="--bs-panel-inset-bottom"
+							data-unit="px"
+							min="0"
+							max="48"
+							value="12" />
+						<span class="theme-value">12px</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Inset</span>
+						<input type="checkbox" id="theme-inset" role="switch" />
+						<span class="theme-value">off</span>
+					</label>
+				</div>
+				<div class="stage stage-row">
+					<button class="btn" data-open="theme-panel">Open the themed sheet</button>
+					<button class="btn" id="theme-reset">Reset</button>
+				</div>
+				<pre
+					class="code-block"><span class="hl-cm">// what every control on this page actually does</span>
+panel.style.setProperty(<span class="hl-val">'--bs-panel-border-radius'</span>, <span class="hl-val">'25px'</span>);
+
+<span class="hl-cm">/* or, far more likely, in your own stylesheet */</span>
+<span class="hl-tag">#my-panel</span> {
+  <span class="hl-attr">--bs-panel-background</span>: <span class="hl-val">#171012</span>;
+  <span class="hl-attr">--bs-handle-color</span>: <span class="hl-val">#9a6a5a</span>;
+}</pre>
+			</section>
+
+			<!-- ---- Lifecycle ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Lifecycle</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">4 events</span>
+				</div>
+				<h2>Every open and close leaves a trace.</h2>
+				<p class="demo-desc">
+					Events come from the parent <code>&lt;dialog-panel&gt;</code>, bubble, and are composed,
+					so one listener on the panel — or on <code>document</code> — sees the whole cycle.
+					<code>beforeShow</code> and <code>beforeHide</code> are cancelable; call
+					<code>preventDefault()</code> in either to hold the sheet where it is.
+				</p>
+				<p class="demo-desc">
+					Each event carries <code>detail.state</code>, which is also mirrored on the panel as a
+					<code>state</code> attribute and is what drives the CSS animation:
+					<code>hidden → showing → shown → hiding</code>. Open the sheet and close it to watch the
+					sequence fill in.
+				</p>
+				<div class="stage">
+					<div class="controls">
+						<button class="btn" data-open="events-panel">Open and log</button>
+						<button class="btn" id="clear-events">Clear log</button>
+					</div>
+					<pre
+						class="event-log"
+						id="event-log"
+						role="log"
+						aria-live="polite"
+						aria-label="Event log">
+No events yet.</pre
+					>
+				</div>
+				<pre
+					class="code-block"><span class="hl-tag">const</span> panel = document.querySelector(<span class="hl-val">'#sheet-panel'</span>);
+
+<span class="hl-tag">for</span> (<span class="hl-tag">const</span> name <span class="hl-tag">of</span> [<span class="hl-val">'beforeShow'</span>, <span class="hl-val">'shown'</span>, <span class="hl-val">'beforeHide'</span>, <span class="hl-val">'hidden'</span>]) {
+  panel.addEventListener(name, (event) =&gt; {
+    console.log(name, event.detail.state);
+  });
+}
+
+<span class="hl-cm">// cancelable — this sheet refuses to open</span>
+panel.addEventListener(<span class="hl-val">'beforeShow'</span>, (event) =&gt; event.preventDefault());</pre>
+			</section>
+
+			<!-- ---- Reference ---- -->
+			<section class="demo-section">
+				<div class="spec">
+					<span class="spec-key">Reference</span>
+					<span class="spec-rule" aria-hidden="true"></span>
+					<span class="spec-val">1 attribute · 14 tokens</span>
+				</div>
+				<h2>The whole surface, on one screen.</h2>
+				<p class="demo-desc">
+					Four elements, one attribute, fourteen style tokens, two methods, and the panel's four
+					lifecycle events. Everything else is ordinary HTML you write yourself.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="api-panel">Open the reference sheet</button>
+				</div>
+				<pre
+					class="code-block"><span class="hl-tag">import</span> <span class="hl-val">'@magic-spells/dialog-panel'</span>;
+<span class="hl-tag">import</span> <span class="hl-val">'@magic-spells/bottom-sheet'</span>;
+
+<span class="hl-tag">import</span> <span class="hl-val">'@magic-spells/dialog-panel/css'</span>;
+<span class="hl-tag">import</span> <span class="hl-val">'@magic-spells/bottom-sheet/css'</span>;
+
+<span class="hl-tag">const</span> sheet = document.querySelector(<span class="hl-val">'bottom-sheet'</span>);
+sheet.show(trigger);
+sheet.hide();</pre>
+
+				<h3 class="ref-heading">Elements</h3>
+				<div class="ref-table">
+					<div class="ref-row ref-head">
+						<div>Element</div>
+						<div>Required</div>
+						<div>Role</div>
+					</div>
+					<div class="ref-row">
+						<div><code>&lt;bottom-sheet&gt;</code></div>
+						<div>Yes</div>
+						<div>Gesture manager. Delegates show and hide to the parent panel.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>&lt;bottom-sheet-header&gt;</code></div>
+						<div>Recommended</div>
+						<div>Draws the drag handle. Always a drag surface.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>&lt;bottom-sheet-content&gt;</code></div>
+						<div>Yes</div>
+						<div>The flexing, scrollable region.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>&lt;bottom-sheet-footer&gt;</code></div>
+						<div>Optional</div>
+						<div>Pinned bar. Drag surface, and owns the safe-area padding.</div>
+					</div>
+				</div>
+
+				<h3 class="ref-heading">Attributes</h3>
+				<div class="ref-table">
+					<div class="ref-row ref-head">
+						<div>Attribute</div>
+						<div>Default</div>
+						<div>Description</div>
+					</div>
+					<div class="ref-row">
+						<div><code>max-display-width</code></div>
+						<div>none</div>
+						<div>
+							Largest viewport width, in pixels, at which the sheet may open. Reflects the
+							<code>maxDisplayWidth</code> property. Also closes an open sheet on resize past the
+							limit.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>snap-points</code></div>
+						<div>none</div>
+						<div>
+							Comma or space separated resting heights as percentages of the viewport height, e.g.
+							<code>"40,70,90"</code>. Sorted and deduped; values outside 0–100 and anything
+							unparseable are dropped. Absent or empty leaves the sheet in its two-state mode.
+							Reflects the <code>snapPoints</code> property.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>snap</code></div>
+						<div>shortest snap</div>
+						<div>
+							The snap the sheet rests at. Set it yourself to choose the opening height; after that
+							the component reflects it, on commit only — it holds its last settled value for the
+							duration of a drag. Ignored when no snap points are declared.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>inset</code></div>
+						<div>absent</div>
+						<div>
+							Detaches the sheet from the screen edges: all four corners rounded, a gap on three
+							sides, and a corrected off-screen transform. Pure CSS — no script reads it.
+						</div>
+					</div>
+				</div>
+
+				<h3 class="ref-heading">CSS Custom Properties</h3>
+				<div class="ref-table">
+					<div class="ref-row ref-head">
+						<div>Property</div>
+						<div>Default</div>
+						<div>Description</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-background</code></div>
+						<div><code>white</code></div>
+						<div>Sheet background.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-max-height</code></div>
+						<div><code>85vh</code></div>
+						<div>
+							Maximum sheet height. Inert once <code>snap-points</code> is set — the tallest snap
+							becomes the cap.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-border-radius</code></div>
+						<div><code>25px</code></div>
+						<div>
+							Top corner radius. The bottom corners stay square unless <code>inset</code> is set.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-inset-x</code></div>
+						<div><code>12px</code></div>
+						<div>Gap on the left and right. <code>inset</code> only.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-inset-bottom</code></div>
+						<div><code>12px</code></div>
+						<div>
+							Gap below the sheet, added on top of the safe area. <code>inset</code> only. Also
+							added to the off-screen translation, so the sheet clears the edge fully.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-box-shadow</code></div>
+						<div>layered shadow</div>
+						<div>Sheet elevation.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-handle-color</code></div>
+						<div><code>#bbb</code></div>
+						<div>Drag-handle color.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-handle-width</code></div>
+						<div><code>50px</code></div>
+						<div>Drag-handle width.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-handle-height</code></div>
+						<div><code>5px</code></div>
+						<div>Drag-handle height. Also its corner radius.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-content-padding</code></div>
+						<div><code>20px</code></div>
+						<div>Horizontal inset for the header and content.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-content-padding-block</code></div>
+						<div><code>0</code></div>
+						<div>
+							Top and bottom inset on the scrollable content. Separate from
+							<code>--bs-content-padding</code>, which is horizontal only, so adding it never
+							doubles up with a content wrapper that already pads itself.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-footer-padding</code></div>
+						<div><code>--bs-content-padding</code></div>
+						<div>Footer inset. The safe-area inset is added below it.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-footer-background</code></div>
+						<div><code>transparent</code></div>
+						<div>Footer background.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-transition-duration</code></div>
+						<div><code>300ms</code></div>
+						<div>Open, close, and snap-back duration.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-transition-timing</code></div>
+						<div><code>ease</code></div>
+						<div>Transition timing function.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-overlay-background</code></div>
+						<div><code>rgba(0, 0, 0, 0.5)</code></div>
+						<div>Backdrop fill.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-overlay-blur</code></div>
+						<div><code>5px</code></div>
+						<div>Backdrop blur radius.</div>
+					</div>
+				</div>
+
+				<h3 class="ref-heading">Methods &amp; Properties</h3>
+				<div class="ref-table">
+					<div class="ref-row ref-head">
+						<div>Name</div>
+						<div>Type</div>
+						<div>Description</div>
+					</div>
+					<div class="ref-row">
+						<div><code>show(triggerEl)</code></div>
+						<div>method</div>
+						<div>
+							Opens through the parent panel. Returns early above
+							<code>maxDisplayWidth</code>. The optional trigger is used for focus return.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>hide()</code></div>
+						<div>method</div>
+						<div>Clears any gesture transform, then closes through the parent panel.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>snapTo(value)</code></div>
+						<div>method</div>
+						<div>
+							Animates to a declared snap. Values that aren't in <code>snapPoints</code> are ignored
+							rather than clamped.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>maxDisplayWidth</code></div>
+						<div>number</div>
+						<div>
+							Responsive limit in pixels, or <code>Infinity</code> for none. Reflects to the
+							attribute.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>snapPoints</code></div>
+						<div>number[]</div>
+						<div>
+							The parsed snaps, ascending. Returns a copy — mutating it does nothing. Assign an
+							array or a string to set them; empty restores two-state mode.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>snap</code></div>
+						<div>number | null</div>
+						<div>
+							The current resting snap, falling back to the shortest when none is pinned.
+							<code>null</code> when no snap points are declared.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>panel</code></div>
+						<div>element</div>
+						<div>Parent <code>&lt;dialog-panel&gt;</code>.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>dialog</code></div>
+						<div>element</div>
+						<div>Parent <code>&lt;dialog&gt;</code> — the surface that receives the transform.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>header</code></div>
+						<div>element</div>
+						<div>Descendant <code>&lt;bottom-sheet-header&gt;</code>.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>content</code></div>
+						<div>element</div>
+						<div>Descendant <code>&lt;bottom-sheet-content&gt;</code>.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>footer</code></div>
+						<div>element</div>
+						<div>Descendant <code>&lt;bottom-sheet-footer&gt;</code>, when present.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>backdrop</code></div>
+						<div>element</div>
+						<div>
+							Generated <code>&lt;dialog-backdrop&gt;</code>, once the panel has created it.
+						</div>
+					</div>
+				</div>
+
+				<h3 class="ref-heading">Events</h3>
+				<div class="ref-table">
+					<div class="ref-row ref-head">
+						<div>Event</div>
+						<div>Cancelable</div>
+						<div>When it fires</div>
+					</div>
+					<div class="ref-row">
+						<div><code>beforeShow</code></div>
+						<div>Yes</div>
+						<div>Before opening begins.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>shown</code></div>
+						<div>No</div>
+						<div>After opening completes.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>beforeHide</code></div>
+						<div>Yes</div>
+						<div>Before closing begins.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>hidden</code></div>
+						<div>No</div>
+						<div>After closing completes.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>snapChange</code></div>
+						<div>No</div>
+						<div>
+							When the sheet settles on a different snap, by gesture or by
+							<code>snapTo()</code>. Never mid-drag, and never when it settles back where it
+							started.
+						</div>
+					</div>
+				</div>
+				<p class="ref-note">
+					The first four bubble, are composed, and are dispatched by the parent panel. Each detail
+					object carries <code>state</code>, <code>triggerElement</code>, and <code>result</code>.
+					<code>snapChange</code> comes from the <code>&lt;bottom-sheet&gt;</code> itself and
+					carries <code>{ from, to }</code> in dvh percent.
+				</p>
+
+				<h3 class="ref-heading">Accessibility</h3>
+				<p class="ref-note">
+					Modal semantics, focus trapping, focus return, Escape handling, and body scroll lock are
+					delegated to the native <code>&lt;dialog&gt;</code> via <code>showModal()</code>, driven
+					by the parent panel — the sheet adds no ARIA of its own. Give the dialog an accessible
+					name with <code>aria-labelledby</code> or <code>aria-label</code>, label icon-only close
+					buttons, and keep a visible close control in the header for anyone who can't perform the
+					gesture. Any element with <code>data-action-hide-dialog</code> closes the sheet.
+				</p>
+
+				<h3 class="ref-heading">Browser support</h3>
+				<p class="ref-note">
+					Modern browsers with custom elements, native <code>&lt;dialog&gt;</code>, Pointer Events,
+					and <code>:has()</code>: Chrome 105+, Edge 105+, Safari 15.4+, Firefox 121+. Pointer
+					Events mean mouse, pen, and touch all take the same path, so every gesture on this page
+					works with a mouse.
+				</p>
+			</section>
+		</main>
+
+		<footer class="site-foot">
+			Built for the lower edge ·
+			<a href="https://github.com/magic-spells/bottom-sheet">@magic-spells/bottom-sheet</a> · MIT
+			License
+		</footer>
+
+		<!-- ======== SHEETS ======== -->
+		<dialog-panel id="basic-panel">
+			<dialog aria-labelledby="basic-title">
 				<bottom-sheet>
 					<bottom-sheet-header>
-						<div style="padding-top: 12px">
-							<h4 style="margin: 0px; padding: 8px 0px">Header</h4>
+						<div class="sheet-header">
+							<h3 id="basic-title">A simple beginning</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
 						</div>
 					</bottom-sheet-header>
-
 					<bottom-sheet-content>
-						<ul class="bottom-sheet-list">
-							<li>Item 1</li>
-							<li>Item 2</li>
-							<li>Item 3</li>
-							<li>Item 4</li>
-							<li>Item 5</li>
+						<div class="sheet-copy">
+							<p>
+								This header is the drag surface. Grab it anywhere — the rounded bar, the title, the
+								empty space beside it — and pull down.
+							</p>
+							<p>
+								The content below scrolls on its own once it outgrows the sheet. Escape closes it,
+								the backdrop closes it, and focus returns to the button that opened it.
+							</p>
+						</div>
+					</bottom-sheet-content>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="flick-panel">
+			<dialog aria-labelledby="flick-title">
+				<bottom-sheet>
+					<bottom-sheet-header id="flick-header">
+						<div class="sheet-header">
+							<h3 id="flick-title">Release with intent</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								A short, fast downward flick dismisses without asking for distance. A slow pull has
+								to travel past 100px.
+							</p>
+							<p>
+								Try the third case: pull well past the threshold, then reverse upward before letting
+								go. The sheet stays. Whatever you do, the readout in the section records the
+								distance, the velocity, and which way it went.
+							</p>
+						</div>
+					</bottom-sheet-content>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="scroll-panel">
+			<dialog aria-labelledby="scroll-title">
+				<bottom-sheet>
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="scroll-title">A list with room to move</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								Scroll down, then drag down — the list keeps the gesture. Come back to the top and
+								drag again, and the panel takes it.
+							</p>
+							<ul class="long-list">
+								<li>01 · First light</li>
+								<li>02 · A warm threshold</li>
+								<li>03 · Notes in the margin</li>
+								<li>04 · A longer route home</li>
+								<li>05 · The soft edge</li>
+								<li>06 · Quiet machinery</li>
+								<li>07 · A useful pause</li>
+								<li>08 · Small signals</li>
+								<li>09 · An open window</li>
+								<li>10 · Weather, later</li>
+								<li>11 · The short way back</li>
+								<li>12 · A held note</li>
+								<li>13 · Something left out</li>
+								<li>14 · Back at the beginning</li>
+							</ul>
+							<p>You reached the bottom. Drag down from here and only the list moves.</p>
+						</div>
+					</bottom-sheet-content>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="footer-panel">
+			<dialog aria-labelledby="footer-title">
+				<bottom-sheet>
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="footer-title">Your bag</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<div class="cart-line">
+								<span class="cart-name"
+									>Linen apron
+									<span class="cart-detail">Natural · one size</span>
+								</span>
+								<span class="cart-price">$48.00</span>
+							</div>
+							<div class="cart-line">
+								<span class="cart-name"
+									>Stoneware mug
+									<span class="cart-detail">Ember glaze · set of two</span>
+								</span>
+								<span class="cart-price">$36.00</span>
+							</div>
+							<div class="cart-line">
+								<span class="cart-name"
+									>Beeswax candle
+									<span class="cart-detail">Unscented · 40 hours</span>
+								</span>
+								<span class="cart-price">$22.00</span>
+							</div>
+							<div class="cart-line">
+								<span class="cart-name"
+									>Cotton tea towel
+									<span class="cart-detail">Woven stripe · pair</span>
+								</span>
+								<span class="cart-price">$18.00</span>
+							</div>
+							<div class="cart-line">
+								<span class="cart-name"
+									>Olive wood spoon
+									<span class="cart-detail">Hand finished</span>
+								</span>
+								<span class="cart-price">$14.00</span>
+							</div>
+							<p>
+								Scroll this list and the bar below holds still. It's a sibling of the content, not
+								part of it.
+							</p>
+						</div>
+					</bottom-sheet-content>
+					<bottom-sheet-footer>
+						<div class="cart-total">
+							<span class="cart-total-label">Total</span>
+							<span class="cart-total-value">$138.00</span>
+						</div>
+						<button class="btn-solid" data-action-hide-dialog>Checkout</button>
+					</bottom-sheet-footer>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="width-panel">
+			<dialog aria-labelledby="width-title">
+				<bottom-sheet max-display-width="768">
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="width-title">Only under 768px</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								Widen the window past 768px without closing this first. The resize listener notices
+								the boundary and hands the close to the parent panel.
+							</p>
+							<p>On a wider screen, this is where you'd reach for a centered dialog instead.</p>
+						</div>
+					</bottom-sheet-content>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="snap-panel">
+			<dialog aria-labelledby="snap-title">
+				<bottom-sheet snap-points="40,70,90">
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="snap-title">Pick a height</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								Drag the header slowly and let go — you land on whichever of 40, 70 and 90 was
+								nearest. Flick instead and you step exactly one, however hard you throw it.
+							</p>
+							<div class="controls">
+								<button class="btn" data-snap="40">40</button>
+								<button class="btn" data-snap="70">70</button>
+								<button class="btn" data-snap="90">90</button>
+							</div>
+							<p>
+								Those buttons call <code>snapTo()</code>. Dragging below 40 is the only way to close
+								this sheet by gesture — from any taller snap a downward flick just steps down.
+							</p>
+						</div>
+					</bottom-sheet-content>
+					<bottom-sheet-footer>
+						<span class="cart-total-label">This footer stays put at every snap</span>
+					</bottom-sheet-footer>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="map-panel">
+			<dialog aria-labelledby="map-title">
+				<bottom-sheet snap-points="25,55,92" snap="25">
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="map-title">Nearby</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+						<input
+							class="sheet-search"
+							type="search"
+							placeholder="Search this area"
+							aria-label="Search this area" />
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<ul class="long-list">
+							<li>Fen &amp; Rye · Bakery · 0.2 mi</li>
+							<li>The Wick · Coffee · 0.3 mi</li>
+							<li>Harbour Books · Bookshop · 0.4 mi</li>
+							<li>Salt Yard · Wine bar · 0.6 mi</li>
+							<li>Morning Glass · Coffee · 0.7 mi</li>
+							<li>Ostrich Lane · Records · 0.8 mi</li>
+							<li>Pell &amp; Co · Hardware · 0.9 mi</li>
+							<li>The Long Room · Pub · 1.1 mi</li>
+							<li>Verge · Plants · 1.2 mi</li>
+							<li>Bellwether · Cheese · 1.3 mi</li>
+							<li>Tin Shed · Bikes · 1.5 mi</li>
+							<li>Quiet Street · Framing · 1.6 mi</li>
+							<li>The Aviary · Tea · 1.8 mi</li>
+							<li>Corner Larder · Grocer · 2.0 mi</li>
 						</ul>
 					</bottom-sheet-content>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
 
-					<div class="bottom-sheet-button-panel">
-						<button data-action-hide-dialog>Clear</button>
-						<button data-action-hide-dialog>Apply</button>
-					</div>
+		<dialog-panel id="inset-panel">
+			<dialog aria-labelledby="inset-title">
+				<bottom-sheet inset>
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="inset-title">Off the edges</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								All four corners are rounded and there's a gap on three sides. Every gesture works
+								exactly as it does on an edge-anchored sheet — the attribute only touches CSS.
+							</p>
+							<p>
+								Drag it down and watch where it goes: it clears the bottom gap and the safe area
+								rather than stopping short and peeking.
+							</p>
+						</div>
+					</bottom-sheet-content>
+					<bottom-sheet-footer>
+						<span class="cart-total-label">The footer keeps the rounded bottom corners</span>
+					</bottom-sheet-footer>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="inset-snap-panel">
+			<dialog aria-labelledby="inset-snap-title">
+				<bottom-sheet inset snap-points="35,65,88">
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="inset-snap-title">Both at once</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								Floating, and snapping at 35, 65 and 88. The height drives the snap; the margin and
+								the corrected off-screen transform stay out of its way.
+							</p>
+							<p>
+								Drag below 35 and it dismisses — clearing the bottom gap on the way out, the same as
+								the plain inset sheet.
+							</p>
+						</div>
+					</bottom-sheet-content>
+					<bottom-sheet-footer>
+						<span class="cart-total-label">Pinned at 35, 65 and 88 alike</span>
+					</bottom-sheet-footer>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="theme-panel">
+			<dialog aria-labelledby="theme-title">
+				<bottom-sheet>
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="theme-title">Turn the dials</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								Set the controls, then open this — a modal <code>&lt;dialog&gt;</code> makes
+								everything outside it inert, so the sliders are genuinely out of reach right now.
+								Close it, turn something, open it again.
+							</p>
+							<p>
+								The transition duration is the one to feel rather than see. Set it long, then drag
+								this sheet halfway down and let go.
+							</p>
+						</div>
+					</bottom-sheet-content>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="events-panel">
+			<dialog aria-labelledby="events-title">
+				<bottom-sheet>
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="events-title">Lifecycle in motion</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								Two events have already fired. Close this sheet to finish the sequence, then read
+								the log back in the section.
+							</p>
+							<p>Closing by flick logs exactly the same pair as closing by button.</p>
+						</div>
+					</bottom-sheet-content>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="api-panel">
+			<dialog aria-labelledby="api-title">
+				<bottom-sheet>
+					<bottom-sheet-header>
+						<div class="sheet-header">
+							<h3 id="api-title">Small by design</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div>
+					</bottom-sheet-header>
+					<bottom-sheet-content>
+						<div class="sheet-copy">
+							<p>
+								The public API stays deliberately narrow. Compose the sheet with ordinary HTML,
+								style it through custom properties, and listen on the parent panel.
+							</p>
+							<p>
+								Everything the tables describe is running in this sheet right now — including the
+								handle you're about to grab.
+							</p>
+						</div>
+					</bottom-sheet-content>
 				</bottom-sheet>
 			</dialog>
 		</dialog-panel>
 
 		<script type="module">
-			import './dialog-panel.esm.js';
-			import './bottom-sheet.esm.js';
+			import './vendor/dialog-panel.esm.js';
+			import './dist/bottom-sheet.esm.js';
 
-			const button = document.getElementById('show-bottom-sheet-button');
-			const sheet = document.getElementById('sheet-dialog');
+			const $ = (selector, root = document) => root.querySelector(selector);
 
-			button.addEventListener('click', (e) => {
-				sheet.show(e.target);
+			// ---- Click to copy the install command ----
+			// The <code> is also user-select: all, so a failed or blocked clipboard
+			// write still leaves the whole command selected in one click.
+			const install = $('.install');
+			const installValue = $('#install-value');
+			const installLabel = $('#install-label');
+			let copiedTimer = 0;
+
+			installValue.addEventListener('click', async () => {
+				try {
+					await navigator.clipboard.writeText(installValue.textContent.trim());
+					install.classList.add('copied');
+					installLabel.textContent = 'Copied';
+					clearTimeout(copiedTimer);
+					copiedTimer = setTimeout(() => {
+						install.classList.remove('copied');
+						installLabel.textContent = 'Install';
+					}, 1400);
+				} catch {
+					/* selection fallback — the command is already highlighted */
+				}
+			});
+
+			// ---- Every [data-open] button opens the sheet inside the named panel ----
+			document.addEventListener('click', (event) => {
+				const trigger = event.target.closest('[data-open]');
+				if (!trigger) return;
+				const panel = document.getElementById(trigger.dataset.open);
+				panel?.querySelector('bottom-sheet')?.show(trigger);
+			});
+
+			// ---- Release readout ----
+			// Mirrors the component's own rules over the same 100ms velocity window,
+			// so the number on the page is the number that made the decision.
+			const releaseReadout = $('#release-readout');
+			const flickHeader = $('#flick-header');
+			let gesture = null;
+
+			flickHeader.addEventListener('pointerdown', (event) => {
+				if (!event.isPrimary) return;
+				gesture = {
+					pointerId: event.pointerId,
+					startY: event.clientY,
+					samples: [{ y: event.clientY, t: event.timeStamp }],
+				};
+			});
+
+			flickHeader.addEventListener('pointermove', (event) => {
+				if (!gesture || event.pointerId !== gesture.pointerId) return;
+				gesture.samples.push({ y: event.clientY, t: event.timeStamp });
+				while (gesture.samples.length > 2 && gesture.samples[0].t < event.timeStamp - 100) {
+					gesture.samples.shift();
+				}
+			});
+
+			flickHeader.addEventListener('pointerup', (event) => {
+				if (!gesture || event.pointerId !== gesture.pointerId) return;
+				const first = gesture.samples[0];
+				const last = gesture.samples[gesture.samples.length - 1];
+				const velocity = last.t === first.t ? 0 : (last.y - first.y) / (last.t - first.t);
+				const delta = event.clientY - gesture.startY;
+
+				let outcome = 'snap back';
+				if (velocity > 0.5) outcome = 'dismiss · flick';
+				else if (delta > 100 && velocity > -0.05) outcome = 'dismiss · pull';
+				else if (delta > 100) outcome = 'snap back · reversed';
+
+				releaseReadout.textContent = `${outcome}\n${delta.toFixed(0)}px · ${velocity.toFixed(2)} px/ms`;
+				gesture = null;
+			});
+
+			flickHeader.addEventListener('pointercancel', () => {
+				releaseReadout.textContent = 'cancelled · snap back';
+				gesture = null;
+			});
+
+			// ---- Display limit readout ----
+			const widthReadout = $('#width-readout');
+			const updateWidthReadout = () => {
+				const width = window.innerWidth;
+				widthReadout.textContent =
+					width > 768
+						? `viewport ${width}px\nover the limit · show() declines`
+						: `viewport ${width}px\nunder the limit · the sheet opens`;
+			};
+			updateWidthReadout();
+			window.addEventListener('resize', updateWidthReadout);
+
+			// ---- Event log ----
+			const eventsPanel = $('#events-panel');
+			const eventLog = $('#event-log');
+			const EMPTY_LOG = 'No events yet.';
+
+			for (const eventName of ['beforeShow', 'shown', 'beforeHide', 'hidden']) {
+				eventsPanel.addEventListener(eventName, (event) => {
+					if (eventLog.textContent === EMPTY_LOG) eventLog.textContent = '';
+					eventLog.textContent += `${eventName.padEnd(11)} detail.state = ${event.detail.state}\n`;
+					eventLog.scrollTop = eventLog.scrollHeight;
+				});
+			}
+
+			$('#clear-events').addEventListener('click', () => {
+				eventLog.textContent = EMPTY_LOG;
+			});
+
+			// ---- Snap readout ----
+			const snapPanel = $('#snap-panel');
+			const snapSheet = snapPanel.querySelector('bottom-sheet');
+			const snapReadout = $('#snap-readout');
+
+			const describeSnap = (value) =>
+				`snap ${value}dvh\n${Math.round((value / 100) * window.innerHeight)}px of ${window.innerHeight}px`;
+
+			// snapChange bubbles, and only fires on commit — never mid-drag
+			snapPanel.addEventListener('snapChange', (event) => {
+				snapReadout.textContent = describeSnap(event.detail.to);
+			});
+
+			snapPanel.addEventListener('shown', () => {
+				snapReadout.textContent = describeSnap(snapSheet.snap);
+			});
+
+			snapPanel.addEventListener('hidden', () => {
+				snapReadout.textContent = 'dismissed · dragged below the shortest snap';
+			});
+
+			// The in-sheet buttons drive snapTo() directly
+			snapPanel.addEventListener('click', (event) => {
+				const trigger = event.target.closest('[data-snap]');
+				if (!trigger) return;
+				snapSheet.snapTo(Number(trigger.dataset.snap));
+			});
+
+			// ---- Theme playground ----
+			const themePanel = $('#theme-panel');
+			const themeSheet = themePanel.querySelector('bottom-sheet');
+			const themeInputs = [...document.querySelectorAll('.theme-grid input[data-prop]')];
+			const overlayInput = $('#theme-overlay');
+			const insetInput = $('#theme-inset');
+
+			// Every control writes an inherited custom property onto the panel,
+			// which is the whole of the theming API
+			const applyProp = (input) => {
+				const value = `${input.value}${input.dataset.unit ?? ''}`;
+				themePanel.style.setProperty(input.dataset.prop, value);
+				const readout = input.parentElement.querySelector('.theme-value');
+				if (readout) readout.textContent = value;
+			};
+
+			const applyOverlay = () => {
+				const alpha = (overlayInput.value / 100).toFixed(2);
+				themePanel.style.setProperty('--bs-overlay-background', `rgba(5, 2, 3, ${alpha})`);
+				overlayInput.parentElement.querySelector('.theme-value').textContent = alpha;
+			};
+
+			const applyInset = () => {
+				themeSheet.toggleAttribute('inset', insetInput.checked);
+				insetInput.parentElement.querySelector('.theme-value').textContent = insetInput.checked
+					? 'on'
+					: 'off';
+			};
+
+			for (const input of themeInputs) {
+				input.addEventListener('input', () => applyProp(input));
+			}
+			overlayInput.addEventListener('input', applyOverlay);
+			insetInput.addEventListener('change', applyInset);
+
+			$('#theme-reset').addEventListener('click', () => {
+				themePanel.removeAttribute('style');
+				for (const input of themeInputs) {
+					input.value = input.defaultValue;
+					const readout = input.parentElement.querySelector('.theme-value');
+					if (readout) readout.textContent = `${input.value}${input.dataset.unit ?? ''}`;
+				}
+				overlayInput.value = overlayInput.defaultValue;
+				overlayInput.parentElement.querySelector('.theme-value').textContent = (
+					overlayInput.value / 100
+				).toFixed(2);
+				insetInput.checked = false;
+				applyInset();
 			});
 		</script>
 	</body>

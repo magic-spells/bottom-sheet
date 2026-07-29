@@ -1,17 +1,21 @@
 # Bottom Sheet Web Component
 
-A lightweight, customizable Web Component for creating accessible bottom sheets. Perfect for mobile-friendly modals, menus, or interactive panels that slide in from the bottom of the screen.
+Accessible bottom-sheet custom elements built on `@magic-spells/dialog-panel`. The sheet keeps modal behavior in the native `<dialog>` layer and adds Pointer Events dragging, velocity dismissal, scroll-aware gesture policy, and safe-area spacing.
 
-[**Live Demo**](https://magic-spells.github.io/bottom-sheet/demo/)
+[**Live Demo**](./demo/)
 
 ## Features
 
-- Built on `@magic-spells/dialog-panel` for native `<dialog>` accessibility
-- Smooth open/close animations with state-driven CSS
-- Touch gestures for drag-to-close with rubber-band physics
-- Escape key handling via native `<dialog>`
-- Focus trapping via `showModal()`
-- Customizable with CSS custom properties
+- Pointer Events gestures work with mouse, touch, and pen
+- Fast downward flicks dismiss without a long drag
+- Optional snap points through `snap-points`, driven by height so the footer stays pinned at every snap
+- Scrollable content hands the gesture to the panel mid-drag, the moment the list runs out
+- Optional detached, fully rounded presentation through `inset`
+- Upward drags use a restrained rubber-band transform
+- Native dialog focus trapping, focus return, Escape handling, and modal semantics
+- Responsive display limit through `max-display-width`
+- Safe-area padding and contained vertical overscroll
+- CSS-transition animations with no physics dependency
 
 ## Installation
 
@@ -19,173 +23,223 @@ A lightweight, customizable Web Component for creating accessible bottom sheets.
 npm install @magic-spells/bottom-sheet @magic-spells/dialog-panel
 ```
 
-```javascript
-// Add to your JavaScript file
+```js
 import '@magic-spells/dialog-panel';
 import '@magic-spells/bottom-sheet';
-```
 
-Or include directly in your HTML:
-
-```html
-<script src="https://unpkg.com/@magic-spells/dialog-panel"></script>
-<script src="https://unpkg.com/@magic-spells/bottom-sheet"></script>
+import '@magic-spells/dialog-panel/css';
+import '@magic-spells/bottom-sheet/css';
 ```
 
 ## Usage
 
-```html
-<button id="show-bottom-sheet-button">Show Bottom Sheet</button>
+Keep the canonical structure intact: `dialog-panel` owns the native dialog, and `bottom-sheet` contains a header, content, and an optional footer.
 
-<dialog-panel id="sheet-dialog">
-	<dialog>
-		<bottom-sheet max-display-width="768">
+```html
+<button id="open-sheet">Open sheet</button>
+
+<dialog-panel id="sheet-panel">
+	<dialog aria-labelledby="sheet-title">
+		<bottom-sheet>
 			<bottom-sheet-header>
-				<div style="padding-top: 12px">
-					<h4 style="margin: 0; padding: 8px 0">Header</h4>
-				</div>
+				<h2 id="sheet-title">A useful title</h2>
+				<button data-action-hide-dialog aria-label="Close">&times;</button>
 			</bottom-sheet-header>
 
 			<bottom-sheet-content>
-				<ul>
-					<li>Item 1</li>
-					<li>Item 2</li>
-					<li>Item 3</li>
-				</ul>
+				<p>Scrollable sheet content goes here.</p>
 			</bottom-sheet-content>
 
-			<div class="bottom-sheet-button-panel">
-				<button data-action-hide-dialog>Cancel</button>
-				<button>Apply</button>
-			</div>
+			<bottom-sheet-footer>
+				<button>Primary action</button>
+			</bottom-sheet-footer>
 		</bottom-sheet>
 	</dialog>
 </dialog-panel>
 
-<script>
-	const button = document.getElementById('show-bottom-sheet-button');
+<script type="module">
+	const trigger = document.querySelector('#open-sheet');
 	const sheet = document.querySelector('bottom-sheet');
 
-	button.addEventListener('click', (e) => sheet.show(e.target));
+	trigger.addEventListener('click', () => sheet.show(trigger));
 </script>
 ```
 
-## How It Works
+Any element with `data-action-hide-dialog` delegates closing to the parent panel.
 
-- The bottom sheet is wrapped in a `<dialog-panel>` and native `<dialog>` element.
-- Clicking the trigger button calls `show(triggerEl)`, which opens the sheet via `dialog-panel`.
-- You can drag the sheet down to close it or click the backdrop overlay.
-- The `hide()` method programmatically closes the bottom sheet.
-- The sheet automatically hides on screens wider than `max-display-width` (if set).
-- Any element with a `data-action-hide-dialog` attribute will close the sheet when clicked.
-- Accessibility (focus trapping, `aria-modal`, escape key) is handled by the native `<dialog>` element.
+## Gestures
 
-## Configuration
+The header and optional footer are always drag surfaces. The generated backdrop accepts a downward drag or a short tap.
 
-The bottom sheet can be configured using the following attributes:
+The content is the interesting case. Rather than deciding once at `pointerdown`, the sheet re-asks on every move until the panel claims the gesture, so a single continuous drag can start as a scroll and become a panel drag. The panel claims when:
 
-| Attribute           | Description                                                                                                                                                                            | Default         |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| `max-display-width` | Maximum viewport width in pixels at which the bottom sheet is displayed. If the viewport is wider, the sheet will automatically hide. Omit this attribute to show on all screen sizes. | None (no limit) |
+- the pointer is moving **down** and the content sits at `scrollTop === 0`, or
+- the pointer is moving **up** and the sheet is below its tallest snap point.
 
-Example:
+That second rule only exists when snap points are declared — without them, an upward drag on content is always an ordinary scroll. Whatever distance the gesture had already travelled is recorded at the moment of the claim and subtracted afterwards, so the panel picks up from where your finger is instead of jumping. Once claimed, the panel keeps the gesture until release.
+
+A release dismisses a sheet **with no snap points** through either rule:
+
+- Downward velocity is greater than `0.5 px/ms`.
+- Downward distance is greater than `100px` and release velocity is greater than `-0.05 px/ms`, preventing dismissal after a meaningful upward reversal.
+
+Cancelled gestures always snap back. Upward drags never dismiss and use resistance instead of tracking the pointer one-to-one.
+
+## Snap Points
+
+`snap-points` takes percentages of the viewport height. Each one becomes the dialog's **height**, not a distance to push it down by, which is what keeps the footer pinned to the bottom edge and the scrollable region exactly as tall as the visible area at every snap.
 
 ```html
-<!-- Bottom sheet that only shows on mobile devices -->
-<dialog-panel>
-	<dialog>
-		<bottom-sheet max-display-width="600">
-			<!-- content -->
-		</bottom-sheet>
-	</dialog>
-</dialog-panel>
-
-<!-- Bottom sheet that shows on all screen sizes -->
-<dialog-panel>
-	<dialog>
-		<bottom-sheet>
-			<!-- content -->
-		</bottom-sheet>
-	</dialog>
-</dialog-panel>
+<bottom-sheet snap-points="40,70,90">
+	<!-- header, content, footer -->
+</bottom-sheet>
 ```
 
-## Customization
+Values are sorted and deduped; anything outside 0–100 or unparseable is dropped. Omit the attribute for the original two-state behavior — every rule below is inert without it.
 
-### Styling
+On release:
 
-You can style the Bottom Sheet using CSS custom properties:
+| Release | Destination |
+| --- | --- |
+| Downward velocity above `0.5 px/ms` | The first snap below the current position |
+| Upward velocity above `0.5 px/ms` | The first snap above, or the tallest |
+| Anything slower | The nearest snap by distance |
+| A downward flick with no snap below | Dismiss |
+
+Stepping is measured from where the sheet currently is rather than the snap the gesture started at, so a flick never lands behind where you dragged to. Dragging below the shortest snap stops being a resize and becomes the ordinary dismiss gesture — that is the only place a snapping sheet closes from by gesture.
+
+The sheet opens at the shortest snap unless you set `snap` yourself. After that the component reflects `snap`, on commit only, so it holds its last settled value for the duration of a drag.
+
+```html
+<bottom-sheet snap-points="25,55,92" snap="25"></bottom-sheet>
+```
+
+```js
+sheet.snapPoints; // [25, 55, 92] — a copy; mutating it does nothing
+sheet.snap; // 25
+sheet.snapTo(92); // undeclared values are ignored, not clamped
+
+sheet.addEventListener('snapChange', (event) => {
+	console.log(event.detail); // { from: 25, to: 92 }
+});
+```
+
+Resting heights are written as `dvh` strings rather than pixels, so rotation and viewport changes re-resolve them with no resize listener involved. `--bs-panel-max-height` is inert once snap points are set — the tallest snap is the cap.
+
+## Inset
+
+`inset` detaches the sheet from the screen edges: all four corners take `--bs-panel-border-radius`, and a gap opens on three sides. It is pure CSS — no script reads the attribute.
+
+```html
+<bottom-sheet inset>
+	<!-- header, content, footer -->
+</bottom-sheet>
+```
+
+The off-screen position is corrected to match. A hidden sheet translates down by `100%`, which is only the panel's own height, so without the correction a detached sheet would stop short and peek above the bottom edge by exactly the inset. The footer's safe-area padding is also dropped in this mode, because the bottom margin already clears it.
+
+With a bottom gap, `height: 70dvh` puts the top edge at `100 − 70 − inset` from the bottom of the screen, so a detached sheet at a given snap sits slightly higher than an edge-anchored one. The snap describes the sheet, not the gap beneath it.
+
+## Responsive Display Limit
+
+`max-display-width` is the largest viewport width, in pixels, where a sheet may open. It also closes an open sheet when a resize crosses the limit.
+
+```html
+<bottom-sheet max-display-width="768">
+	<!-- header and content -->
+</bottom-sheet>
+```
+
+Omit the attribute, remove it, or set the `maxDisplayWidth` property to `Infinity` for no limit.
+
+## CSS Custom Properties
+
+Set these on `:root`, a panel, or another ancestor.
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `--bs-panel-background` | `white` | Sheet background |
+| `--bs-panel-max-height` | `85vh` | Maximum sheet height. Inert when `snap-points` is set |
+| `--bs-panel-border-radius` | `25px` | Top corner radius, or all four with `inset` |
+| `--bs-panel-inset-x` | `12px` | Left and right gap. `inset` only |
+| `--bs-panel-inset-bottom` | `12px` | Gap below the sheet, added on top of the safe area. `inset` only |
+| `--bs-panel-box-shadow` | layered shadow | Sheet elevation |
+| `--bs-handle-color` | `#bbb` | Drag-handle color |
+| `--bs-handle-width` | `50px` | Drag-handle width |
+| `--bs-handle-height` | `5px` | Drag-handle height |
+| `--bs-content-padding` | `20px` | Horizontal header/content inset |
+| `--bs-content-padding-block` | `0` | Top and bottom inset on the scrollable content |
+| `--bs-footer-padding` | `--bs-content-padding` | Footer inset (safe-area padding is added below) |
+| `--bs-footer-background` | `transparent` | Footer background |
+| `--bs-transition-duration` | `300ms` | Open, close, and snap-back duration |
+| `--bs-transition-timing` | `ease` | Transition timing function |
+| `--bs-overlay-background` | `rgba(0, 0, 0, 0.5)` | Backdrop fill |
+| `--bs-overlay-blur` | `5px` | Backdrop blur |
 
 ```css
 :root {
-	/* Colors */
-	--bs-overlay-background: rgba(0, 0, 0, 0.7); /* Darker overlay */
-	--bs-panel-background: #f8f8f8; /* Light gray panel */
-	--bs-handle-color: #999; /* Darker handle */
-
-	/* Sizing */
-	--bs-panel-max-height: 70vh; /* Shorter panel */
-	--bs-panel-border-radius: 16px; /* Smaller border radius */
-
-	/* Animation */
-	--bs-transition-duration: 250ms; /* Faster animation */
-
-	/* Effects */
-	--bs-overlay-blur: 3px; /* Less blur */
+	--bs-panel-background: #171012;
+	--bs-panel-border-radius: 18px;
+	--bs-transition-duration: 240ms;
+	--bs-overlay-blur: 8px;
 }
 ```
 
-### JavaScript API
+## JavaScript API
 
-#### Methods
+### Methods
 
-- `show(triggerEl)`: Opens the bottom sheet. Pass the trigger element for focus return on close.
-- `hide()`: Closes the bottom sheet.
+| Method | Description |
+| --- | --- |
+| `show(triggerEl)` | Open through the parent panel. The optional trigger is used for focus return. |
+| `hide()` | Clear any gesture transform and close through the parent panel. |
+| `snapTo(value)` | Animate to a declared snap. Undeclared values are ignored rather than clamped. |
 
-#### Properties
+### Properties
 
-- `maxDisplayWidth`: Get/set the maximum viewport width for display (number or `Infinity`).
-- `panel`: Reference to the parent `<dialog-panel>` element.
-- `dialog`: Reference to the parent `<dialog>` element.
+| Property | Description |
+| --- | --- |
+| `maxDisplayWidth` | Numeric responsive limit or `Infinity` |
+| `snapPoints` | Parsed snaps, ascending. Returns a copy. Assign an array or string; empty restores two-state mode |
+| `snap` | Current resting snap, falling back to the shortest. `null` when no snap points are declared |
+| `panel` | Parent `<dialog-panel>` |
+| `dialog` | Parent `<dialog>` |
+| `header` | Descendant `<bottom-sheet-header>` |
+| `content` | Descendant `<bottom-sheet-content>` |
+| `footer` | Descendant `<bottom-sheet-footer>`, when present |
+| `backdrop` | Generated `<dialog-backdrop>`, when available |
 
-#### Keyboard Support
+## Events
 
-- `Escape` key: Closes the bottom sheet when open (handled by native `<dialog>`).
+The lifecycle events come from the parent `<dialog-panel>`, bubble, and are composed.
 
-#### Events
+| Event | Cancelable | When it fires |
+| --- | --- | --- |
+| `beforeShow` | Yes | Before opening begins |
+| `shown` | No | After opening completes |
+| `beforeHide` | Yes | Before closing begins |
+| `hidden` | No | After closing completes |
+| `snapChange` | No | When the sheet settles on a different snap |
 
-Events are dispatched on the `<dialog-panel>` element. All events bubble and are composed.
+Each lifecycle event includes the panel detail object, with `detail.state`, `detail.triggerElement`, and `detail.result`.
 
-- `beforeShow`: Fired before opening (cancelable).
-- `shown`: Fired after the open animation completes.
-- `beforeHide`: Fired before closing (cancelable).
-- `hidden`: Fired after the close animation completes.
+`snapChange` is dispatched by the `<bottom-sheet>` itself and carries `{ from, to }` in dvh percent. It fires on commit only — never mid-drag, and never when the sheet settles back where it started.
 
-All events include `detail.triggerElement`, `detail.result`, and `detail.state`.
+```js
+const panel = document.querySelector('#sheet-panel');
 
-```javascript
-const panel = document.getElementById('sheet-dialog');
-
-panel.addEventListener('shown', (e) => {
-	console.log('Bottom sheet opened', e.detail);
-});
-
-panel.addEventListener('hidden', (e) => {
-	console.log('Bottom sheet closed', e.detail);
+panel.addEventListener('shown', (event) => {
+	console.log(event.detail.state);
 });
 ```
 
-#### Touch Gestures
+## Accessibility
 
-- **Header drag**: Always allows dragging the panel down to dismiss.
-- **Backdrop drag**: Always allows dragging the panel down to dismiss.
-- **Content drag**: Allows panel drag when content is scrolled to top and dragging down.
-- **Upward drag**: Applies rubber-band resistance.
-- **Downward drag past threshold**: Dismisses the sheet.
+The parent panel and native `<dialog>` provide modal semantics, focus trapping, focus return, and Escape handling. Give the dialog an accessible name with `aria-labelledby` or `aria-label`, label icon-only close buttons, and keep a visible close action in the header.
 
 ## Browser Support
 
-This component works in all modern browsers that support Web Components and the `<dialog>` element.
+Modern browsers with custom elements, native `<dialog>`, Pointer Events, and `:has()` support.
 
 ## License
 
