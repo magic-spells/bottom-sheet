@@ -8,6 +8,13 @@
 	/* Off-screen fill below an edge-anchored sheet. Upward drag resistance is
 	   sqrt-based, so real overscroll tops out around 20-30px; 60 is headroom. */
 	--bs-panel-bleed: 60px;
+	/* Extra travel past the bottom edge when hidden. 100% is exactly the panel's
+	   own height, so the sheet stops the instant its top edge clears the fold —
+	   which reads as the motion being cut short. Overshooting the exit gives the
+	   close somewhere to keep going. Applied to hidden, showing and hiding alike,
+	   so the open starts from the same place the close ended and the two stay
+	   symmetrical. */
+	--bs-panel-hidden-offset: 20px;
 	--bs-panel-box-shadow: 0 1px 20px -4px rgba(0, 0, 0, 0.3), 0 0 7px 0 rgba(0, 0, 0, 0.1);
 	--bs-handle-color: #bbb;
 	--bs-handle-width: 50px;
@@ -86,12 +93,12 @@ dialog-panel:has(bottom-sheet-footer) > dialog {
 
 dialog-panel[state='hidden']:has(bottom-sheet) > dialog {
 	opacity: 1;
-	transform: translate3d(0, 100%, 0);
+	transform: translate3d(0, calc(100% + var(--bs-panel-hidden-offset)), 0);
 }
 
 dialog-panel[state='showing']:has(bottom-sheet) > dialog {
 	opacity: 1;
-	transform: translate3d(0, 100%, 0);
+	transform: translate3d(0, calc(100% + var(--bs-panel-hidden-offset)), 0);
 }
 
 dialog-panel[state='shown']:has(bottom-sheet) > dialog {
@@ -101,7 +108,7 @@ dialog-panel[state='shown']:has(bottom-sheet) > dialog {
 
 dialog-panel[state='hiding']:has(bottom-sheet) > dialog {
 	opacity: 1;
-	transform: translate3d(0, 100%, 0);
+	transform: translate3d(0, calc(100% + var(--bs-panel-hidden-offset)), 0);
 	transition: transform var(--bs-transition-duration) var(--bs-transition-timing);
 }
 
@@ -165,7 +172,10 @@ dialog-panel[state='showing']:has(bottom-sheet[inset]) > dialog,
 dialog-panel[state='hiding']:has(bottom-sheet[inset]) > dialog {
 	transform: translate3d(
 		0,
-		calc(100% + var(--bs-panel-inset-bottom) + env(safe-area-inset-bottom, 0px)),
+		calc(
+			100% + var(--bs-panel-inset-bottom) + env(safe-area-inset-bottom, 0px) +
+				var(--bs-panel-hidden-offset)
+		),
 		0
 	);
 }

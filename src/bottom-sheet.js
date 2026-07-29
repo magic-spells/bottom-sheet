@@ -1,6 +1,20 @@
 import './bottom-sheet.css';
+import PhysicsEngine from '@magic-spells/physics-engine';
 import { DragGesture } from './drag-gesture.js';
 import { parseSnapPoints, resolveSnapTarget } from './snap-points.js';
+
+// PhysicsEngine integrates once per 60fps frame — its `velocity` is units per
+// frame, not per millisecond. DragGesture reports px/ms, so every release
+// velocity handed to the spring has to cross this scale first. Getting it wrong
+// is silent: the spring still runs, it just settles at ~17x the wrong speed.
+const FRAME_MS = 16.66;
+
+// The tracker measures the last stretch of a finger that is already slowing
+// into its release, so the number it reports reads slightly slower than the
+// throw felt. A small boost hands the spring the intent rather than the
+// measurement. Kept separate from FRAME_MS: that one is a unit conversion and
+// is not a matter of taste, this one is.
+const VELOCITY_BOOST = 1.1;
 
 /**
  * A throttle utility function to limit how often a function can be called
@@ -49,6 +63,11 @@ class BottomSheet extends HTMLElement {
 	#snapPoints = [];
 	#snap = null;
 
+	// Spring settling. Null until the `spring` attribute opts in, so a sheet
+	// without it never constructs an engine and never runs a rAF loop.
+	#engine = null;
+	#springTarget = null;
+
 	// cached references for reliable cleanup in disconnectedCallback
 	#panelRef = null;
 	#dialogRef = null;
@@ -59,7 +78,7 @@ class BottomSheet extends HTMLElement {
 	 * @returns {string[]} List of attribute names to observe
 	 */
 	static get observedAttributes() {
-		return ['max-display-width', 'snap-points', 'snap'];
+		return ['max-display-width', 'snap-points', 'snap', 'spring'];
 	}
 
 	/**
@@ -92,7 +111,69 @@ class BottomSheet extends HTMLElement {
 			const parsed = Number(newValue);
 			_.#snap = newValue !== null && Number.isFinite(parsed) ? parsed : null;
 			_.#applyRestingHeight();
+			return;
 		}
+
+		if (name === 'spring') {
+			if (newValue === null) {
+				_.#stopSpring();
+				_.#engine = null;
+				return;
+			}
+			_.#buildEngine();
+		}
+	}
+
+	/**
+	 * Creates the spring and wires it to the dialog height. Tuning comes from
+	 * the attribute value as `attraction,friction` so it can be dialled in from
+	 * the demo without a rebuild; anything unparseable falls back to defaults.
+	 */
+	#buildEngine() {
+		const _ = this;
+		const [attraction, friction] = String(_.getAttribute('spring') ?? '')
+			.split(/[\s,]+/)
+			.map(Number);
+
+		// Attraction pulls toward the snap; friction bleeds off the speed that
+		// pull builds. Raising both together is not a wash — friction is applied
+		// every frame and wins, so 0.05/0.30 damps harder than 0.034/0.22
+		// despite the stronger pull: a snap-to-snap move reaches the snap in
+		// ~430ms with almost no overshoot, and stops ringing ~270ms sooner.
+		// Tighter and more controlled rather than springier.
+		const options = { attraction: 0.05, friction: 0.3 };
+		if (Number.isFinite(attraction) && attraction > 0 && attraction < 1) {
+			options.attraction = attraction;
+		}
+		if (Number.isFinite(friction) && friction > 0 && friction < 1) {
+			options.friction = friction;
+		}
+
+		_.#stopSpring();
+		_.#engine = new PhysicsEngine(options);
+
+		_.#engine.on('change', ({ position }) => {
+			const dialog = _.dialog;
+			// A gesture that starts mid-settle owns the height from then on
+			if (dialog && !_.#drag.active) dialog.style.height = `${position}px`;
+		});
+
+		_.#engine.on('complete', () => {
+			// Cleared first: #applyRestingHeight refuses to write while a settle
+			// is still marked as running, which is what keeps the attribute
+			// reflection from clobbering the spring mid-flight.
+			if (_.#springTarget === null) return;
+			_.#springTarget = null;
+			_.#applyRestingHeight();
+		});
+	}
+
+	/**
+	 * Halts a running settle without letting its completion write a height
+	 */
+	#stopSpring() {
+		this.#springTarget = null;
+		this.#engine?.stop();
 	}
 
 	/**
@@ -283,6 +364,8 @@ class BottomSheet extends HTMLElement {
 	 * Hides the bottom sheet via dialog-panel
 	 */
 	hide() {
+		// A close is a state transition, not a settle — let go of the height
+		this.#stopSpring();
 		// Clear any inline transform from drag gestures so CSS state transitions work.
 		// The inline height stays put — the hiding transform is a percentage of it.
 		if (this.dialog) {
@@ -330,6 +413,10 @@ class BottomSheet extends HTMLElement {
 			_.#dialogRef.addEventListener('transitionend', _.#handlers.transitionEnd);
 		}
 
+		// disconnectedCallback drops the engine, and a reconnect fires no
+		// attribute change to rebuild it
+		if (_.hasAttribute('spring') && !_.#engine) _.#buildEngine();
+
 		// Attributes parsed before connection could not reach the dialog
 		_.#applyRestingHeight();
 	}
@@ -350,6 +437,10 @@ class BottomSheet extends HTMLElement {
 		_.#scrollVeto = null;
 		_.#backdropBound = false;
 		_.#drag = { active: false };
+		// Leaves no rAF loop running against a detached dialog
+		_.#stopSpring();
+		_.#engine?.removeAllListeners();
+		_.#engine = null;
 
 		_.#panelRef?.removeEventListener('beforeShow', _.#handlers.beforeShow);
 
@@ -369,6 +460,10 @@ class BottomSheet extends HTMLElement {
 		const _ = this;
 		const dialog = _.dialog;
 		if (!dialog) return;
+		// A running settle owns the height frame by frame. Without this the
+		// `snap` reflection fired by #commitSnap would immediately overwrite the
+		// spring's first frame with the destination and skip the animation.
+		if (_.#springTarget !== null) return;
 
 		const snap = _.#activeSnap;
 		dialog.style.height = snap === null ? '' : `${snap}dvh`;
@@ -397,6 +492,10 @@ class BottomSheet extends HTMLElement {
 		if (_.panel?.hasAttribute('morph') && (state === 'showing' || state === 'hiding')) {
 			return;
 		}
+
+		// A settle in flight loses the sheet to the finger, and must not keep
+		// writing heights underneath the drag.
+		_.#stopSpring();
 
 		const dialog = _.dialog;
 		// Measured while the transition is still armed. A settling sheet already
@@ -593,7 +692,7 @@ class BottomSheet extends HTMLElement {
 			if (velocityY > _.#flickVelocity || drag.belowLowest > _.#dragThreshold) {
 				_.hide();
 			} else {
-				_.#commitSnap(_.#snapPoints[0]);
+				_.#commitSnap(_.#snapPoints[0], velocityY);
 			}
 			return;
 		}
@@ -611,21 +710,45 @@ class BottomSheet extends HTMLElement {
 			return;
 		}
 
-		_.#commitSnap(_.#snapPoints[snapsPx.indexOf(targetPx)]);
+		_.#commitSnap(_.#snapPoints[snapsPx.indexOf(targetPx)], velocityY);
 	}
 
 	/**
 	 * Settles the sheet on a snap, reflects it, and announces the change
 	 * @param {number} value - The snap in dvh percent
 	 */
-	#commitSnap(value) {
+	#commitSnap(value, velocityY = 0) {
 		const _ = this;
 		const from = _.#activeSnap;
 		const dialog = _.dialog;
 
 		// Written explicitly rather than left to the attribute reflection —
 		// re-committing the same snap still has to clear the drag's inline pixels
-		if (dialog) {
+		if (dialog && _.#engine) {
+			const startPx = dialog.getBoundingClientRect().height;
+
+			// The spring writes the height every frame, so the CSS transition
+			// has to be off or the two fight over the same property.
+			dialog.classList.remove('transitioning', 'snapping');
+			dialog.style.transform = '';
+			_.#springTarget = (value / 100) * window.innerHeight;
+
+			// velocityY is positive downward while height grows upward, so the
+			// sign flips. This is the whole point of the spring path: the settle
+			// leaves at the speed the finger was actually moving.
+			const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
+
+			// Temporary instrumentation for tuning the boost on-device.
+			// Must come out before this branch goes near main.
+			console.log('[bottom-sheet] spring seed', {
+				releasePxPerMs: Number(velocityY.toFixed(4)),
+				seedPerFrame: Number(seed.toFixed(3)),
+				travelPx: Number((_.#springTarget - startPx).toFixed(1)),
+				snap: value,
+			});
+
+			_.#engine.animateTo(startPx, _.#springTarget, seed);
+		} else if (dialog) {
 			// Only a settle onto a snap is paced by the snap duration. Adding
 			// this in #dragEnd instead would also catch the drag-dismiss, where
 			// the extra class would outrank and speed up the closing transition.

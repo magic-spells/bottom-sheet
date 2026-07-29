@@ -1,3 +1,168 @@
+//#region node_modules/@magic-spells/physics-engine/dist/physics-engine.esm.js
+var f = class {
+	#t;
+	constructor() {
+		this.#t = /* @__PURE__ */ new Map();
+	}
+	/**
+	* Binds a listener to an event.
+	* @param {string} event - The event to bind the listener to.
+	* @param {Function} listener - The listener function to bind.
+	* @returns {EventEmitter} The current instance for chaining.
+	* @throws {TypeError} If the listener is not a function.
+	*/
+	on(t, i) {
+		if (typeof i != "function") throw new TypeError("Listener must be a function");
+		const s = this.#t.get(t) || [];
+		return s.includes(i) || s.push(i), this.#t.set(t, s), this;
+	}
+	/**
+	* Unbinds a listener from an event.
+	* @param {string} event - The event to unbind the listener from.
+	* @param {Function} listener - The listener function to unbind.
+	* @returns {EventEmitter} The current instance for chaining.
+	*/
+	off(t, i) {
+		const s = this.#t.get(t);
+		if (!s) return this;
+		const e = s.indexOf(i);
+		return e !== -1 && (s.splice(e, 1), s.length === 0 ? this.#t.delete(t) : this.#t.set(t, s)), this;
+	}
+	/**
+	* Triggers an event and calls all bound listeners.
+	* @param {string} event - The event to trigger.
+	* @param {...*} args - Arguments to pass to the listener functions.
+	* @returns {boolean} True if the event had listeners, false otherwise.
+	*/
+	emit(t, ...i) {
+		const s = this.#t.get(t);
+		if (!s || s.length === 0) return !1;
+		const e = s.slice();
+		for (let n = 0, r = e.length; n < r; ++n) try {
+			e[n].apply(this, i);
+		} catch (h) {
+			console.error(`Error in listener for event '${t}':`, h);
+		}
+		return !0;
+	}
+	/**
+	* Removes all listeners for a specific event or all events.
+	* @param {string} [event] - The event to remove listeners from. If not provided, removes all listeners.
+	* @returns {EventEmitter} The current instance for chaining.
+	*/
+	removeAllListeners(t) {
+		return t ? this.#t.delete(t) : this.#t.clear(), this;
+	}
+};
+var b = class extends f {
+	#t;
+	#m;
+	#o;
+	#n;
+	#s;
+	#e;
+	#r;
+	#h;
+	#i;
+	/**
+	* Creates an instance of PhysicsEngine.
+	* @param {number} [attraction=0.026] - The attraction value for physics-based animation (0 < attraction < 1).
+	* @param {number} [friction=0.28] - The friction value for physics-based animation (0 < friction < 1).
+	*/
+	constructor({ attraction: t = .026, friction: i = .28 } = {}) {
+		if (super(), !Number.isFinite(t) || t <= 0 || t >= 1) throw new Error("Attraction must be a number between 0 and 1 (exclusive).");
+		if (!Number.isFinite(i) || i <= 0 || i >= 1) throw new Error("Friction must be a number between 0 and 1 (exclusive).");
+		this.#t = t, this.#m = i, this.#o = 1 - i, this.#n = 0, this.#s = 0, this.#e = 0, this.isAnimating = !1, this.#r = null, this.#h = 0, this.#i = null;
+	}
+	/**
+	* Animates from a start value to an end value.
+	* @param {number} startValue - The starting value.
+	* @param {number} endValue - The target value.
+	* @param {number} [velocity=0] - Initial velocity.
+	* @returns {Promise} Resolves when animation completes or is stopped.
+	*/
+	animateTo(t, i, s = 0) {
+		if (!Number.isFinite(t)) throw new Error("startValue must be a finite number.");
+		if (!Number.isFinite(i)) throw new Error("endValue must be a finite number.");
+		if (!Number.isFinite(s)) throw new Error("velocity must be a finite number.");
+		if (this.isAnimating && this.#u(), t === i && s === 0) return this.emit("change", {
+			position: i,
+			progress: 1
+		}), this.emit("complete", {
+			position: i,
+			progress: 1
+		}), Promise.resolve();
+		this.#s = t, this.#e = i, this.#n = s, this.isAnimating = !0, this.#r = null;
+		const e = ++this.#h;
+		return new Promise((n) => {
+			this.#i = n;
+			const r = (h) => {
+				if (e !== this.#h || !this.isAnimating) return;
+				if (this.#r === null) {
+					this.#r = h, requestAnimationFrame(r);
+					return;
+				}
+				const o = Math.min(h - this.#r, 64) / 16.66;
+				this.#r = h;
+				const l = (this.#e - this.#s) * this.#t;
+				this.#n += l * o, this.#n *= Math.pow(this.#o, o), this.#s += this.#n * o;
+				const m = this.#e - t;
+				let u = 0;
+				if (m !== 0 && (u = (this.#s - t) / m), this.emit("change", {
+					position: this.#s,
+					progress: u
+				}), Math.abs(this.#s - this.#e) < .01 && Math.abs(this.#n) < .01) {
+					this.isAnimating = !1;
+					const c = this.#i;
+					this.#i = null, this.emit("change", {
+						position: this.#e,
+						progress: 1
+					}), this.emit("complete", {
+						position: this.#e,
+						progress: 1
+					}), c();
+					return;
+				}
+				requestAnimationFrame(r);
+			};
+			requestAnimationFrame(r);
+		});
+	}
+	/**
+	* Internal stop — resolves Promise without emitting 'stop'.
+	* Used when a new animateTo supersedes the current one.
+	*/
+	#u() {
+		this.isAnimating = !1, this.#i && (this.#i(), this.#i = null);
+	}
+	/**
+	* Stops the ongoing animation.
+	* Emits 'stop' event and resolves the pending Promise.
+	*/
+	stop() {
+		if (!this.isAnimating) return;
+		this.isAnimating = !1, this.#h++;
+		const t = this.#i;
+		this.#i = null, this.emit("stop", { position: this.#s }), t && t();
+	}
+	/**
+	* Sets the attraction value
+	* @param {number} attraction - The attraction value for physics-based animation (0 < attraction < 1).
+	*/
+	setAttraction(t) {
+		if (!Number.isFinite(t) || t <= 0 || t >= 1) throw new Error("Attraction must be a number between 0 and 1 (exclusive).");
+		this.#t = t;
+	}
+	/**
+	* Sets the friction value
+	* @param {number} friction - The friction value for physics-based animation (0 < friction < 1).
+	*/
+	setFriction(t) {
+		if (!Number.isFinite(t) || t <= 0 || t >= 1) throw new Error("Friction must be a number between 0 and 1 (exclusive).");
+		this.#m = t, this.#o = 1 - t;
+	}
+};
+//#endregion
 //#region src/drag-gesture.js
 var VelocityTracker = class {
 	#samples = [];
@@ -17,8 +182,18 @@ var VelocityTracker = class {
 	get velocity() {
 		const samples = this.#samples;
 		if (samples.length < 2) return 0;
-		const first = samples[0];
 		const last = samples[samples.length - 1];
+		let direction = 0;
+		let start = samples.length - 1;
+		while (start > 0) {
+			const step = Math.sign(samples[start].y - samples[start - 1].y);
+			if (step !== 0) {
+				if (direction === 0) direction = step;
+				else if (step !== direction) break;
+			}
+			start--;
+		}
+		const first = samples[start];
 		const deltaTime = last.t - first.t;
 		return deltaTime === 0 ? 0 : (last.y - first.y) / deltaTime;
 	}
@@ -94,6 +269,7 @@ var DragGesture = class {
 		if (!_.#active || event.pointerId !== _.#pointerId) return;
 		_.#active = false;
 		_.#captured = false;
+		_.#tracker.add(event.clientY, event.timeStamp);
 		_.#onEnd?.({
 			event,
 			deltaY: event.clientY - _.#startY,
@@ -149,6 +325,8 @@ var resolveSnapTarget = ({ currentPx, velocityY, snapsPx, flickVelocity }) => {
 };
 //#endregion
 //#region src/bottom-sheet.js
+var FRAME_MS = 16.66;
+var VELOCITY_BOOST = 1.1;
 /**
 * A throttle utility function to limit how often a function can be called
 * @param {Function} func - The function to throttle
@@ -190,6 +368,8 @@ var BottomSheet = class extends HTMLElement {
 	#maxDisplayWidth = Infinity;
 	#snapPoints = [];
 	#snap = null;
+	#engine = null;
+	#springTarget = null;
 	#panelRef = null;
 	#dialogRef = null;
 	#backdropBound = false;
@@ -201,7 +381,8 @@ var BottomSheet = class extends HTMLElement {
 		return [
 			"max-display-width",
 			"snap-points",
-			"snap"
+			"snap",
+			"spring"
 		];
 	}
 	/**
@@ -230,7 +411,49 @@ var BottomSheet = class extends HTMLElement {
 			const parsed = Number(newValue);
 			_.#snap = newValue !== null && Number.isFinite(parsed) ? parsed : null;
 			_.#applyRestingHeight();
+			return;
 		}
+		if (name === "spring") {
+			if (newValue === null) {
+				_.#stopSpring();
+				_.#engine = null;
+				return;
+			}
+			_.#buildEngine();
+		}
+	}
+	/**
+	* Creates the spring and wires it to the dialog height. Tuning comes from
+	* the attribute value as `attraction,friction` so it can be dialled in from
+	* the demo without a rebuild; anything unparseable falls back to defaults.
+	*/
+	#buildEngine() {
+		const _ = this;
+		const [attraction, friction] = String(_.getAttribute("spring") ?? "").split(/[\s,]+/).map(Number);
+		const options = {
+			attraction: .05,
+			friction: .3
+		};
+		if (Number.isFinite(attraction) && attraction > 0 && attraction < 1) options.attraction = attraction;
+		if (Number.isFinite(friction) && friction > 0 && friction < 1) options.friction = friction;
+		_.#stopSpring();
+		_.#engine = new b(options);
+		_.#engine.on("change", ({ position }) => {
+			const dialog = _.dialog;
+			if (dialog && !_.#drag.active) dialog.style.height = `${position}px`;
+		});
+		_.#engine.on("complete", () => {
+			if (_.#springTarget === null) return;
+			_.#springTarget = null;
+			_.#applyRestingHeight();
+		});
+	}
+	/**
+	* Halts a running settle without letting its completion write a height
+	*/
+	#stopSpring() {
+		this.#springTarget = null;
+		this.#engine?.stop();
 	}
 	/**
 	* Get the maximum display width
@@ -362,6 +585,7 @@ var BottomSheet = class extends HTMLElement {
 					_.#backdropBound = true;
 				}
 				_.#applyRestingHeight();
+				_.dialog?.classList.remove("snapping");
 				_.dialog?.classList.add("transitioning");
 			}
 		};
@@ -379,7 +603,11 @@ var BottomSheet = class extends HTMLElement {
 	* Hides the bottom sheet via dialog-panel
 	*/
 	hide() {
-		if (this.dialog) this.dialog.style.transform = "";
+		this.#stopSpring();
+		if (this.dialog) {
+			this.dialog.style.transform = "";
+			this.dialog.classList.remove("snapping");
+		}
 		this.panel?.hide();
 	}
 	connectedCallback() {
@@ -399,6 +627,7 @@ var BottomSheet = class extends HTMLElement {
 		_.#backdropBound = false;
 		_.#panelRef?.addEventListener("beforeShow", _.#handlers.beforeShow);
 		if (_.#dialogRef) _.#dialogRef.addEventListener("transitionend", _.#handlers.transitionEnd);
+		if (_.hasAttribute("spring") && !_.#engine) _.#buildEngine();
 		_.#applyRestingHeight();
 	}
 	disconnectedCallback() {
@@ -410,6 +639,9 @@ var BottomSheet = class extends HTMLElement {
 		_.#scrollVeto = null;
 		_.#backdropBound = false;
 		_.#drag = { active: false };
+		_.#stopSpring();
+		_.#engine?.removeAllListeners();
+		_.#engine = null;
 		_.#panelRef?.removeEventListener("beforeShow", _.#handlers.beforeShow);
 		if (_.#dialogRef) _.#dialogRef.removeEventListener("transitionend", _.#handlers.transitionEnd);
 		_.#panelRef = null;
@@ -423,6 +655,7 @@ var BottomSheet = class extends HTMLElement {
 		const _ = this;
 		const dialog = _.dialog;
 		if (!dialog) return;
+		if (_.#springTarget !== null) return;
 		const snap = _.#activeSnap;
 		dialog.style.height = snap === null ? "" : `${snap}dvh`;
 	}
@@ -445,15 +678,19 @@ var BottomSheet = class extends HTMLElement {
 		const _ = this;
 		const state = _.panel?.getAttribute("state");
 		if (_.panel?.hasAttribute("morph") && (state === "showing" || state === "hiding")) return;
+		_.#stopSpring();
+		const dialog = _.dialog;
+		const startHeight = dialog?.getBoundingClientRect().height ?? 0;
+		if (dialog && _.#snapPoints.length) dialog.style.height = `${startHeight}px`;
 		_.#drag = {
 			active: true,
 			claimed: false,
 			surface,
 			claimOffset: 0,
-			startHeight: _.dialog?.getBoundingClientRect().height ?? 0,
+			startHeight,
 			belowLowest: 0
 		};
-		_.dialog?.classList.remove("transitioning");
+		dialog?.classList.remove("transitioning", "snapping");
 	}
 	/**
 	* Applies resistance to a drag value to create a rubber-band effect
@@ -544,8 +781,11 @@ var BottomSheet = class extends HTMLElement {
 			_.hide();
 			return;
 		}
-		if (!drag.claimed) return;
 		_.dialog?.classList.add("transitioning");
+		if (!drag.claimed) {
+			_.#applyRestingHeight();
+			return;
+		}
 		if (_.#snapPoints.length) {
 			_.#releaseToSnap(drag, velocityY, cancelled);
 			return;
@@ -570,7 +810,7 @@ var BottomSheet = class extends HTMLElement {
 		}
 		if (drag.belowLowest > 0) {
 			if (velocityY > _.#flickVelocity || drag.belowLowest > _.#dragThreshold) _.hide();
-			else _.#commitSnap(_.#snapPoints[0]);
+			else _.#commitSnap(_.#snapPoints[0], velocityY);
 			return;
 		}
 		const snapsPx = _.#snapsPx();
@@ -584,17 +824,31 @@ var BottomSheet = class extends HTMLElement {
 			_.hide();
 			return;
 		}
-		_.#commitSnap(_.#snapPoints[snapsPx.indexOf(targetPx)]);
+		_.#commitSnap(_.#snapPoints[snapsPx.indexOf(targetPx)], velocityY);
 	}
 	/**
 	* Settles the sheet on a snap, reflects it, and announces the change
 	* @param {number} value - The snap in dvh percent
 	*/
-	#commitSnap(value) {
+	#commitSnap(value, velocityY = 0) {
 		const _ = this;
 		const from = _.#activeSnap;
 		const dialog = _.dialog;
-		if (dialog) {
+		if (dialog && _.#engine) {
+			const startPx = dialog.getBoundingClientRect().height;
+			dialog.classList.remove("transitioning", "snapping");
+			dialog.style.transform = "";
+			_.#springTarget = value / 100 * window.innerHeight;
+			const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
+			console.log("[bottom-sheet] spring seed", {
+				releasePxPerMs: Number(velocityY.toFixed(4)),
+				seedPerFrame: Number(seed.toFixed(3)),
+				travelPx: Number((_.#springTarget - startPx).toFixed(1)),
+				snap: value
+			});
+			_.#engine.animateTo(startPx, _.#springTarget, seed);
+		} else if (dialog) {
+			dialog.classList.add("snapping");
 			dialog.style.transform = "";
 			dialog.style.height = `${value}dvh`;
 		}
@@ -613,7 +867,7 @@ var BottomSheet = class extends HTMLElement {
 	* @param {TransitionEvent} e - The transition event
 	*/
 	#handleTransitionEnd(e) {
-		if (e.target === this.dialog && (e.propertyName === "transform" || e.propertyName === "height")) this.dialog.classList.remove("transitioning");
+		if (e.target === this.dialog && (e.propertyName === "transform" || e.propertyName === "height")) this.dialog.classList.remove("transitioning", "snapping");
 	}
 };
 var BottomSheetContent = class extends HTMLElement {

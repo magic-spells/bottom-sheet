@@ -494,6 +494,18 @@
 				justify-self: end;
 			}
 
+			.theme-row > select {
+				justify-self: end;
+				width: 110px;
+				background: var(--surface, #1a1214);
+				color: var(--cream-dim);
+				border: 1px solid var(--border);
+				border-radius: 6px;
+				padding: 0.25rem 0.3rem;
+				font-family: inherit;
+				font-size: 0.72rem;
+			}
+
 			.theme-label {
 				color: var(--cream-dim);
 				font-size: 0.85rem;
@@ -860,6 +872,21 @@
 			}
 
 			/* ---- Responsive ---- */
+			/* Each row is label + a 110px control + a 5ch readout, so two of them
+			   plus the 3rem gutter run out of room long before the page does.
+			   Collapsed on its own breakpoint rather than with the rest of the
+			   layout, which still reads fine down at 640. */
+			@media (max-width: 900px) {
+				.theme-grid {
+					grid-template-columns: 1fr;
+				}
+
+				/* One column, so only the very first row sits on the top edge */
+				.theme-row:nth-child(2) {
+					border-top: 1px solid var(--border);
+				}
+			}
+
 			@media (max-width: 640px) {
 				.hero {
 					padding-inline: 1rem;
@@ -888,13 +915,7 @@
 				}
 
 				.theme-grid {
-					grid-template-columns: 1fr;
 					padding-inline: 1rem;
-				}
-
-				/* back to one column, so only the very first row is on the top edge */
-				.theme-row:nth-child(2) {
-					border-top: 1px solid var(--border);
 				}
 
 				.code-block {
@@ -1420,6 +1441,16 @@ sheet.maxDisplayWidth = Infinity;</pre>
 						<span class="theme-value">280ms</span>
 					</label>
 					<label class="theme-row">
+						<span class="theme-label">Snap curve</span>
+						<select id="theme-curve">
+							<option value="cubic-bezier(0.32, 0.72, 0, 1)">Default (no overshoot)</option>
+							<option value="cubic-bezier(0.22, 1.2, 0.36, 1)">Back-out, subtle (1.2% over)</option>
+							<option value="cubic-bezier(0.25, 1.4, 0.45, 1)">Back-out, medium (5.3% over)</option>
+							<option value="cubic-bezier(0.34, 1.56, 0.64, 1)">Back-out, full (9.8% over)</option>
+						</select>
+						<span class="theme-value">default</span>
+					</label>
+					<label class="theme-row">
 						<span class="theme-label">Overlay blur</span>
 						<input
 							type="range"
@@ -1466,6 +1497,27 @@ sheet.maxDisplayWidth = Infinity;</pre>
 						<span class="theme-label">Snap 40 · 66 · 95</span>
 						<input type="checkbox" id="theme-snap" role="switch" />
 						<span class="theme-value">off</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Spring settle</span>
+						<input type="checkbox" id="theme-spring" role="switch" />
+						<span class="theme-value">off</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">· attraction</span>
+						<input
+							type="range"
+							id="theme-attraction"
+							min="5"
+							max="200"
+							step="1"
+							value="50" />
+						<span class="theme-value">0.050</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">· friction</span>
+						<input type="range" id="theme-friction" min="5" max="90" step="1" value="30" />
+						<span class="theme-value">0.30</span>
 					</label>
 				</div>
 				<div class="stage stage-row">
@@ -2441,6 +2493,15 @@ sheet.hide();</pre>
 				overlayInput.parentElement.querySelector('.theme-value').textContent = alpha;
 			};
 
+			// Overshoot is a share of the travelled distance, so how far past the
+			// snap it lands depends on the gap between snaps, not the curve alone
+			const curveInput = $('#theme-curve');
+			const applyCurve = () => {
+				themePanel.style.setProperty('--bs-snap-timing', curveInput.value);
+				curveInput.parentElement.querySelector('.theme-value').textContent =
+					curveInput.selectedIndex === 0 ? 'default' : 'back-out';
+			};
+
 			const applyInset = () => {
 				themeSheet.toggleAttribute('inset', insetInput.checked);
 				insetInput.parentElement.querySelector('.theme-value').textContent = insetInput.checked
@@ -2467,10 +2528,41 @@ sheet.hide();</pre>
 					: 'off';
 			};
 
+			// Spring settle. The attribute carries its own tuning as
+			// `attraction,friction`, so both sliders rewrite it and the element
+			// rebuilds its engine — no reload needed while testing on a phone.
+			const springInput = $('#theme-spring');
+			const attractionInput = $('#theme-attraction');
+			const frictionInput = $('#theme-friction');
+
+			const applySpring = () => {
+				// Sliders are integers so they stay usable on touch; the engine
+				// wants 0–1 exclusive, hence the divide.
+				const attraction = (attractionInput.value / 1000).toFixed(3);
+				const friction = (frictionInput.value / 100).toFixed(2);
+
+				attractionInput.parentElement.querySelector('.theme-value').textContent = attraction;
+				frictionInput.parentElement.querySelector('.theme-value').textContent = friction;
+				springInput.parentElement.querySelector('.theme-value').textContent = springInput.checked
+					? 'on'
+					: 'off';
+
+				if (springInput.checked) {
+					themeSheet.setAttribute('spring', `${attraction},${friction}`);
+				} else {
+					themeSheet.removeAttribute('spring');
+				}
+			};
+
+			springInput.addEventListener('change', applySpring);
+			attractionInput.addEventListener('input', applySpring);
+			frictionInput.addEventListener('input', applySpring);
+
 			for (const input of themeInputs) {
 				input.addEventListener('input', () => applyProp(input));
 			}
 			overlayInput.addEventListener('input', applyOverlay);
+			curveInput.addEventListener('change', applyCurve);
 			insetInput.addEventListener('change', applyInset);
 			snapInput.addEventListener('change', applySnapPoints);
 
@@ -2485,10 +2577,16 @@ sheet.hide();</pre>
 				overlayInput.parentElement.querySelector('.theme-value').textContent = (
 					overlayInput.value / 100
 				).toFixed(2);
+				curveInput.selectedIndex = 0;
+				applyCurve();
 				insetInput.checked = false;
 				applyInset();
 				snapInput.checked = false;
 				applySnapPoints();
+				springInput.checked = false;
+				attractionInput.value = attractionInput.defaultValue;
+				frictionInput.value = frictionInput.defaultValue;
+				applySpring();
 			});
 		</script>
 	</body>
