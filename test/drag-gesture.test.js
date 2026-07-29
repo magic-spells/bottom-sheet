@@ -81,6 +81,7 @@ test('DragGesture reports a complete start, move, and end flow', () => {
 	assert.equal(calls[0][1].y, 20);
 	assert.equal(calls[1][0], 'move');
 	assert.equal(calls[1][1].deltaY, 100);
+	assert.equal(calls[1][1].moveY, 100);
 	assert.equal(calls[1][1].direction, 'down');
 	assert.ok(calls[1][1].velocityY > 0.9);
 	assert.equal(calls[2][0], 'end');
@@ -130,6 +131,50 @@ test('DragGesture captures on upward drags too', () => {
 	el.fire('pointermove', ev({ clientY: 170, timeStamp: 20 }));
 
 	assert.equal(el.capturedPointerId, 1);
+
+	gesture.destroy();
+});
+
+test('DragGesture reports instantaneous movement separately from cumulative delta', () => {
+	const el = new StubElement();
+	const moves = [];
+	const gesture = new DragGesture(el, {
+		onMove: (info) =>
+			moves.push({ deltaY: info.deltaY, moveY: info.moveY, direction: info.direction }),
+	});
+
+	el.fire('pointerdown', ev({ clientY: 100, timeStamp: 0 }));
+	// Down, down, then a reversal that never crosses back past the start
+	el.fire('pointermove', ev({ clientY: 140, timeStamp: 20 }));
+	el.fire('pointermove', ev({ clientY: 180, timeStamp: 40 }));
+	el.fire('pointermove', ev({ clientY: 150, timeStamp: 60 }));
+
+	assert.deepEqual(moves, [
+		{ deltaY: 40, moveY: 40, direction: 'down' },
+		{ deltaY: 80, moveY: 40, direction: 'down' },
+		// direction still reads 'down' because the pointer is below its origin;
+		// only moveY sees the reversal, which is what a handoff decision needs
+		{ deltaY: 50, moveY: -30, direction: 'down' },
+	]);
+
+	gesture.destroy();
+});
+
+test('DragGesture restarts moveY from the new origin on a second gesture', () => {
+	const el = new StubElement();
+	const moves = [];
+	const gesture = new DragGesture(el, {
+		onMove: (info) => moves.push(info.moveY),
+	});
+
+	el.fire('pointerdown', ev({ clientY: 100, timeStamp: 0 }));
+	el.fire('pointermove', ev({ clientY: 160, timeStamp: 20 }));
+	el.fire('pointerup', ev({ clientY: 160, timeStamp: 40 }));
+
+	el.fire('pointerdown', ev({ clientY: 300, timeStamp: 60 }));
+	el.fire('pointermove', ev({ clientY: 320, timeStamp: 80 }));
+
+	assert.deepEqual(moves, [60, 20]);
 
 	gesture.destroy();
 });

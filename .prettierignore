@@ -2,4 +2,5 @@
 **/*.md
 assets/
 dist/
+demo/vendor/
 node_modules/

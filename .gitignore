@@ -20,6 +20,9 @@ Thumbs.db
 # Cache
 .eslintcache
 
+# Agent/tool scratch output
+.playwright-mcp/
+
 # Package files
 *.tgz
 

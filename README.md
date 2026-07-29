@@ -8,7 +8,9 @@ Accessible bottom-sheet custom elements built on `@magic-spells/dialog-panel`. T
 
 - Pointer Events gestures work with mouse, touch, and pen
 - Fast downward flicks dismiss without a long drag
-- Scrollable content keeps native vertical scrolling until a downward drag starts at the top
+- Optional snap points through `snap-points`, driven by height so the footer stays pinned at every snap
+- Scrollable content hands the gesture to the panel mid-drag, the moment the list runs out
+- Optional detached, fully rounded presentation through `inset`
 - Upward drags use a restrained rubber-band transform
 - Native dialog focus trapping, focus return, Escape handling, and modal semantics
 - Responsive display limit through `max-display-width`
@@ -67,14 +69,76 @@ Any element with `data-action-hide-dialog` delegates closing to the parent panel
 
 ## Gestures
 
-The header and optional footer are always drag surfaces. The content becomes a drag surface only when it starts at `scrollTop === 0` and the first movement is downward; otherwise the browser keeps native vertical scrolling. The generated backdrop also accepts a downward drag or a short tap.
+The header and optional footer are always drag surfaces. The generated backdrop accepts a downward drag or a short tap.
 
-A release dismisses the sheet through either rule:
+The content is the interesting case. Rather than deciding once at `pointerdown`, the sheet re-asks on every move until the panel claims the gesture, so a single continuous drag can start as a scroll and become a panel drag. The panel claims when:
+
+- the pointer is moving **down** and the content sits at `scrollTop === 0`, or
+- the pointer is moving **up** and the sheet is below its tallest snap point.
+
+That second rule only exists when snap points are declared — without them, an upward drag on content is always an ordinary scroll. Whatever distance the gesture had already travelled is recorded at the moment of the claim and subtracted afterwards, so the panel picks up from where your finger is instead of jumping. Once claimed, the panel keeps the gesture until release.
+
+A release dismisses a sheet **with no snap points** through either rule:
 
 - Downward velocity is greater than `0.5 px/ms`.
 - Downward distance is greater than `100px` and release velocity is greater than `-0.05 px/ms`, preventing dismissal after a meaningful upward reversal.
 
 Cancelled gestures always snap back. Upward drags never dismiss and use resistance instead of tracking the pointer one-to-one.
+
+## Snap Points
+
+`snap-points` takes percentages of the viewport height. Each one becomes the dialog's **height**, not a distance to push it down by, which is what keeps the footer pinned to the bottom edge and the scrollable region exactly as tall as the visible area at every snap.
+
+```html
+<bottom-sheet snap-points="40,70,90">
+	<!-- header, content, footer -->
+</bottom-sheet>
+```
+
+Values are sorted and deduped; anything outside 0–100 or unparseable is dropped. Omit the attribute for the original two-state behavior — every rule below is inert without it.
+
+On release:
+
+| Release | Destination |
+| --- | --- |
+| Downward velocity above `0.5 px/ms` | The first snap below the current position |
+| Upward velocity above `0.5 px/ms` | The first snap above, or the tallest |
+| Anything slower | The nearest snap by distance |
+| A downward flick with no snap below | Dismiss |
+
+Stepping is measured from where the sheet currently is rather than the snap the gesture started at, so a flick never lands behind where you dragged to. Dragging below the shortest snap stops being a resize and becomes the ordinary dismiss gesture — that is the only place a snapping sheet closes from by gesture.
+
+The sheet opens at the shortest snap unless you set `snap` yourself. After that the component reflects `snap`, on commit only, so it holds its last settled value for the duration of a drag.
+
+```html
+<bottom-sheet snap-points="25,55,92" snap="25"></bottom-sheet>
+```
+
+```js
+sheet.snapPoints; // [25, 55, 92] — a copy; mutating it does nothing
+sheet.snap; // 25
+sheet.snapTo(92); // undeclared values are ignored, not clamped
+
+sheet.addEventListener('snapChange', (event) => {
+	console.log(event.detail); // { from: 25, to: 92 }
+});
+```
+
+Resting heights are written as `dvh` strings rather than pixels, so rotation and viewport changes re-resolve them with no resize listener involved. `--bs-panel-max-height` is inert once snap points are set — the tallest snap is the cap.
+
+## Inset
+
+`inset` detaches the sheet from the screen edges: all four corners take `--bs-panel-border-radius`, and a gap opens on three sides. It is pure CSS — no script reads the attribute.
+
+```html
+<bottom-sheet inset>
+	<!-- header, content, footer -->
+</bottom-sheet>
+```
+
+The off-screen position is corrected to match. A hidden sheet translates down by `100%`, which is only the panel's own height, so without the correction a detached sheet would stop short and peek above the bottom edge by exactly the inset. The footer's safe-area padding is also dropped in this mode, because the bottom margin already clears it.
+
+With a bottom gap, `height: 70dvh` puts the top edge at `100 − 70 − inset` from the bottom of the screen, so a detached sheet at a given snap sits slightly higher than an edge-anchored one. The snap describes the sheet, not the gap beneath it.
 
 ## Responsive Display Limit
 
@@ -95,13 +159,16 @@ Set these on `:root`, a panel, or another ancestor.
 | Property | Default | Description |
 | --- | --- | --- |
 | `--bs-panel-background` | `white` | Sheet background |
-| `--bs-panel-max-height` | `85vh` | Maximum sheet height |
-| `--bs-panel-border-radius` | `25px` | Top corner radius |
+| `--bs-panel-max-height` | `85vh` | Maximum sheet height. Inert when `snap-points` is set |
+| `--bs-panel-border-radius` | `25px` | Top corner radius, or all four with `inset` |
+| `--bs-panel-inset-x` | `12px` | Left and right gap. `inset` only |
+| `--bs-panel-inset-bottom` | `12px` | Gap below the sheet, added on top of the safe area. `inset` only |
 | `--bs-panel-box-shadow` | layered shadow | Sheet elevation |
 | `--bs-handle-color` | `#bbb` | Drag-handle color |
 | `--bs-handle-width` | `50px` | Drag-handle width |
 | `--bs-handle-height` | `5px` | Drag-handle height |
 | `--bs-content-padding` | `20px` | Horizontal header/content inset |
+| `--bs-content-padding-block` | `0` | Top and bottom inset on the scrollable content |
 | `--bs-footer-padding` | `--bs-content-padding` | Footer inset (safe-area padding is added below) |
 | `--bs-footer-background` | `transparent` | Footer background |
 | `--bs-transition-duration` | `300ms` | Open, close, and snap-back duration |
@@ -126,12 +193,15 @@ Set these on `:root`, a panel, or another ancestor.
 | --- | --- |
 | `show(triggerEl)` | Open through the parent panel. The optional trigger is used for focus return. |
 | `hide()` | Clear any gesture transform and close through the parent panel. |
+| `snapTo(value)` | Animate to a declared snap. Undeclared values are ignored rather than clamped. |
 
 ### Properties
 
 | Property | Description |
 | --- | --- |
 | `maxDisplayWidth` | Numeric responsive limit or `Infinity` |
+| `snapPoints` | Parsed snaps, ascending. Returns a copy. Assign an array or string; empty restores two-state mode |
+| `snap` | Current resting snap, falling back to the shortest. `null` when no snap points are declared |
 | `panel` | Parent `<dialog-panel>` |
 | `dialog` | Parent `<dialog>` |
 | `header` | Descendant `<bottom-sheet-header>` |
@@ -141,7 +211,7 @@ Set these on `:root`, a panel, or another ancestor.
 
 ## Events
 
-Events come from the parent `<dialog-panel>`, bubble, and are composed.
+The lifecycle events come from the parent `<dialog-panel>`, bubble, and are composed.
 
 | Event | Cancelable | When it fires |
 | --- | --- | --- |
@@ -149,8 +219,11 @@ Events come from the parent `<dialog-panel>`, bubble, and are composed.
 | `shown` | No | After opening completes |
 | `beforeHide` | Yes | Before closing begins |
 | `hidden` | No | After closing completes |
+| `snapChange` | No | When the sheet settles on a different snap |
 
-Each event includes the panel detail object, including `detail.state`, `detail.triggerElement`, and `detail.result`.
+Each lifecycle event includes the panel detail object, with `detail.state`, `detail.triggerElement`, and `detail.result`.
+
+`snapChange` is dispatched by the `<bottom-sheet>` itself and carries `{ from, to }` in dvh percent. It fires on commit only — never mid-drag, and never when the sheet settles back where it started.
 
 ```js
 const panel = document.querySelector('#sheet-panel');

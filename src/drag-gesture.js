@@ -46,6 +46,7 @@ class DragGesture {
 	#onEnd;
 	#pointerId = null;
 	#startY = 0;
+	#lastY = 0;
 	#startTime = 0;
 	#tracker = new VelocityTracker();
 
@@ -78,6 +79,7 @@ class DragGesture {
 		_.#captured = false;
 		_.#pointerId = event.pointerId;
 		_.#startY = event.clientY;
+		_.#lastY = event.clientY;
 		_.#startTime = event.timeStamp;
 		_.#tracker.reset();
 		_.#tracker.add(event.clientY, event.timeStamp);
@@ -93,6 +95,11 @@ class DragGesture {
 		if (!_.#active || event.pointerId !== _.#pointerId) return;
 
 		const deltaY = event.clientY - _.#startY;
+		// deltaY is cumulative, so its sign only ever reports where the pointer
+		// sits relative to where it started. moveY reports which way it is
+		// travelling right now, which is what a mid-gesture handoff needs.
+		const moveY = event.clientY - _.#lastY;
+		_.#lastY = event.clientY;
 
 		// Once the pointer has clearly moved this is a drag, not a tap, so
 		// capture to keep receiving events if it leaves the element.
@@ -105,6 +112,7 @@ class DragGesture {
 		_.#onMove?.({
 			event,
 			deltaY,
+			moveY,
 			direction: deltaY < 0 ? 'up' : 'down',
 			velocityY: _.#tracker.velocity,
 		});

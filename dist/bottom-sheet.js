@@ -41,6 +41,7 @@
 		#onEnd;
 		#pointerId = null;
 		#startY = 0;
+		#lastY = 0;
 		#startTime = 0;
 		#tracker = new VelocityTracker();
 		constructor(el, { onStart, onMove, onEnd } = {}) {
@@ -64,6 +65,7 @@
 			_.#captured = false;
 			_.#pointerId = event.pointerId;
 			_.#startY = event.clientY;
+			_.#lastY = event.clientY;
 			_.#startTime = event.timeStamp;
 			_.#tracker.reset();
 			_.#tracker.add(event.clientY, event.timeStamp);
@@ -76,6 +78,8 @@
 			const _ = this;
 			if (!_.#active || event.pointerId !== _.#pointerId) return;
 			const deltaY = event.clientY - _.#startY;
+			const moveY = event.clientY - _.#lastY;
+			_.#lastY = event.clientY;
 			if (!_.#captured && Math.abs(deltaY) > SLOP) {
 				_.#captured = true;
 				_.#el.setPointerCapture?.(event.pointerId);
@@ -84,6 +88,7 @@
 			_.#onMove?.({
 				event,
 				deltaY,
+				moveY,
 				direction: deltaY < 0 ? "up" : "down",
 				velocityY: _.#tracker.velocity
 			});
@@ -110,6 +115,41 @@
 			_.#pointerId = null;
 			_.#tracker.reset();
 		}
+	};
+	/**
+	* Parses a snap-points attribute into a sorted list of dvh percentages
+	* @param {string|null} value - Comma or whitespace separated numbers
+	* @returns {number[]} Ascending, deduped percentages; empty when nothing parses
+	*/
+	var parseSnapPoints = (value) => {
+		if (!value) return [];
+		const seen = /* @__PURE__ */ new Set();
+		for (const token of String(value).split(/[\s,]+/)) {
+			if (token === "") continue;
+			const parsed = Number(token);
+			if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) continue;
+			seen.add(parsed);
+		}
+		return [...seen].sort((a, b) => a - b);
+	};
+	/**
+	* Chooses the snap a released gesture should land on. A flick steps exactly one
+	* snap in its own direction; anything slower lands on whichever snap is nearest.
+	* @param {Object} options
+	* @param {number} options.currentPx - Panel height at the moment of release
+	* @param {number} options.velocityY - Release velocity in px/ms, positive downward
+	* @param {number[]} options.snapsPx - Ascending snap heights in pixels
+	* @param {number} options.flickVelocity - Speed that counts as a flick
+	* @returns {number|null} Target height in pixels, or null to dismiss
+	*/
+	var resolveSnapTarget = ({ currentPx, velocityY, snapsPx, flickVelocity }) => {
+		if (!snapsPx.length) return null;
+		if (velocityY > flickVelocity) {
+			const below = snapsPx.filter((px) => px < currentPx - 1);
+			return below.length ? below[below.length - 1] : null;
+		}
+		if (velocityY < -flickVelocity) return snapsPx.find((px) => px > currentPx + 1) ?? snapsPx[snapsPx.length - 1];
+		return snapsPx.reduce((best, px) => Math.abs(px - currentPx) < Math.abs(best - currentPx) ? px : best);
 	};
 	//#endregion
 	//#region src/bottom-sheet.js
@@ -152,6 +192,8 @@
 		#dragThreshold = 100;
 		#flickVelocity = .5;
 		#maxDisplayWidth = Infinity;
+		#snapPoints = [];
+		#snap = null;
 		#panelRef = null;
 		#dialogRef = null;
 		#backdropBound = false;
@@ -160,7 +202,11 @@
 		* @returns {string[]} List of attribute names to observe
 		*/
 		static get observedAttributes() {
-			return ["max-display-width"];
+			return [
+				"max-display-width",
+				"snap-points",
+				"snap"
+			];
 		}
 		/**
 		* Called when observed attributes change
@@ -171,10 +217,23 @@
 		attributeChangedCallback(name, oldValue, newValue) {
 			const _ = this;
 			if (oldValue === newValue) return;
-			if (name === "max-display-width") if (newValue === null || newValue === "none") _.maxDisplayWidth = Infinity;
-			else {
-				const parsed = parseInt(newValue);
-				_.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
+			if (name === "max-display-width") {
+				if (newValue === null || newValue === "none") _.maxDisplayWidth = Infinity;
+				else {
+					const parsed = parseInt(newValue);
+					_.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
+				}
+				return;
+			}
+			if (name === "snap-points") {
+				_.#snapPoints = parseSnapPoints(newValue);
+				_.#applyRestingHeight();
+				return;
+			}
+			if (name === "snap") {
+				const parsed = Number(newValue);
+				_.#snap = newValue !== null && Number.isFinite(parsed) ? parsed : null;
+				_.#applyRestingHeight();
 			}
 		}
 		/**
@@ -193,6 +252,62 @@
 			_.#maxDisplayWidth = value;
 			if (value === Infinity) _.removeAttribute("max-display-width");
 			else _.setAttribute("max-display-width", value);
+		}
+		/**
+		* Get the declared snap points
+		* @returns {number[]} Ascending dvh percentages; empty when the sheet is binary
+		*/
+		get snapPoints() {
+			return [...this.#snapPoints];
+		}
+		/**
+		* Set the snap points and reflect to attribute
+		* @param {number[]|string|null} value - Percentages of the viewport height
+		*/
+		set snapPoints(value) {
+			const _ = this;
+			const list = Array.isArray(value) ? value.join(",") : value ?? "";
+			if (String(list).trim() === "") _.removeAttribute("snap-points");
+			else _.setAttribute("snap-points", list);
+		}
+		/**
+		* Get the snap the sheet is currently resting at. Reflects only on commit,
+		* so it holds the last settled value for the duration of a drag.
+		* @returns {number|null} The snap in dvh percent, or null when the sheet is binary
+		*/
+		get snap() {
+			return this.#activeSnap;
+		}
+		/**
+		* Set the resting snap and reflect to attribute
+		* @param {number|null} value - A declared snap in dvh percent
+		*/
+		set snap(value) {
+			const _ = this;
+			if (value === null) _.removeAttribute("snap");
+			else _.setAttribute("snap", value);
+		}
+		/**
+		* Animates the sheet to a declared snap point. Undeclared values are ignored.
+		* @param {number} value - A snap in dvh percent
+		*/
+		snapTo(value) {
+			const _ = this;
+			const target = Number(value);
+			if (!_.#snapPoints.includes(target)) return;
+			_.dialog?.classList.add("transitioning");
+			_.#commitSnap(target);
+		}
+		/**
+		* The snap currently in effect, falling back to the shortest declared snap
+		* when the author has not pinned one
+		* @returns {number|null}
+		*/
+		get #activeSnap() {
+			const _ = this;
+			if (!_.#snapPoints.length) return null;
+			if (_.#snap !== null && _.#snapPoints.includes(_.#snap)) return _.#snap;
+			return _.#snapPoints[0];
 		}
 		/**
 		* Find parent dialog-panel element
@@ -250,6 +365,7 @@
 						_.#gestures.push(new DragGesture(backdrop, _.#surfaceCallbacks("backdrop")));
 						_.#backdropBound = true;
 					}
+					_.#applyRestingHeight();
 					_.dialog?.classList.add("transitioning");
 				}
 			};
@@ -287,6 +403,7 @@
 			_.#backdropBound = false;
 			_.#panelRef?.addEventListener("beforeShow", _.#handlers.beforeShow);
 			if (_.#dialogRef) _.#dialogRef.addEventListener("transitionend", _.#handlers.transitionEnd);
+			_.#applyRestingHeight();
 		}
 		disconnectedCallback() {
 			const _ = this;
@@ -301,6 +418,24 @@
 			if (_.#dialogRef) _.#dialogRef.removeEventListener("transitionend", _.#handlers.transitionEnd);
 			_.#panelRef = null;
 			_.#dialogRef = null;
+		}
+		/**
+		* Writes the current snap to the dialog as a dvh height. Keeping the resting
+		* value in dvh rather than pixels is what makes viewport resizes free.
+		*/
+		#applyRestingHeight() {
+			const _ = this;
+			const dialog = _.dialog;
+			if (!dialog) return;
+			const snap = _.#activeSnap;
+			dialog.style.height = snap === null ? "" : `${snap}dvh`;
+		}
+		/**
+		* Resolves the declared snaps to pixels against the current viewport
+		* @returns {number[]} Ascending snap heights in pixels
+		*/
+		#snapsPx() {
+			return this.#snapPoints.map((value) => value / 100 * window.innerHeight);
 		}
 		#surfaceCallbacks(surface) {
 			const _ = this;
@@ -318,8 +453,9 @@
 				active: true,
 				claimed: false,
 				surface,
-				isAtTop: surface === "content" ? _.content?.scrollTop === 0 : true,
-				direction: null
+				claimOffset: 0,
+				startHeight: _.dialog?.getBoundingClientRect().height ?? 0,
+				belowLowest: 0
 			};
 			_.dialog?.classList.remove("transitioning");
 		}
@@ -331,17 +467,77 @@
 		#applyResistance(value) {
 			return Math.sqrt(value) * 10 * this.#overscrollResistance;
 		}
-		#dragMove(surface, { deltaY, direction }) {
+		/**
+		* Decides whether the panel takes a gesture over from the content scroller.
+		* Re-evaluated on every move until it succeeds, so the handoff can happen
+		* part way through a single continuous drag.
+		* @param {string} surface - The surface the gesture started on
+		* @param {number} moveY - Instantaneous travel, positive downward
+		* @returns {boolean}
+		*/
+		#shouldClaim(surface, moveY) {
+			const _ = this;
+			if (surface !== "content") return true;
+			if (moveY === 0) return false;
+			if (moveY > 0) return _.content?.scrollTop === 0;
+			const snaps = _.#snapPoints;
+			return snaps.length > 0 && _.#activeSnap < snaps[snaps.length - 1];
+		}
+		#dragMove(surface, { deltaY, moveY }) {
 			const _ = this;
 			const drag = _.#drag;
 			if (!drag.active) return;
-			if (!drag.direction) drag.direction = direction;
-			if (surface === "content" && (!drag.isAtTop || drag.direction === "up")) return;
-			drag.claimed = true;
-			if (deltaY < 0) {
-				const resistedDelta = _.#applyResistance(-deltaY);
-				if (_.dialog) _.dialog.style.transform = `translate3d(0, ${-resistedDelta}px, 0)`;
-			} else if (_.dialog) _.dialog.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+			if (!drag.claimed) {
+				if (!_.#shouldClaim(surface, moveY)) return;
+				drag.claimed = true;
+				drag.claimOffset = deltaY;
+			}
+			const travel = deltaY - drag.claimOffset;
+			if (_.#snapPoints.length) _.#moveBySnap(travel);
+			else _.#moveByTransform(travel);
+		}
+		/**
+		* Drives a snapping sheet by its height, so the footer stays pinned and the
+		* scroll region always matches what is actually on screen
+		* @param {number} travel - Claimed drag distance, positive downward
+		*/
+		#moveBySnap(travel) {
+			const _ = this;
+			const dialog = _.dialog;
+			if (!dialog) return;
+			const snapsPx = _.#snapsPx();
+			const minPx = snapsPx[0];
+			const maxPx = snapsPx[snapsPx.length - 1];
+			const height = _.#drag.startHeight - travel;
+			if (height > maxPx) {
+				dialog.style.height = `${maxPx + _.#applyResistance(height - maxPx)}px`;
+				dialog.style.transform = "";
+				_.#drag.belowLowest = 0;
+				return;
+			}
+			if (height < minPx) {
+				const below = minPx - height;
+				dialog.style.height = `${minPx}px`;
+				dialog.style.transform = `translate3d(0, ${below}px, 0)`;
+				_.#drag.belowLowest = below;
+				return;
+			}
+			dialog.style.height = `${height}px`;
+			dialog.style.transform = "";
+			_.#drag.belowLowest = 0;
+		}
+		/**
+		* Drives a binary sheet by transform alone
+		* @param {number} travel - Claimed drag distance, positive downward
+		*/
+		#moveByTransform(travel) {
+			const _ = this;
+			const dialog = _.dialog;
+			if (!dialog) return;
+			if (travel < 0) {
+				const resisted = _.#applyResistance(-travel);
+				dialog.style.transform = `translate3d(0, ${-resisted}px, 0)`;
+			} else dialog.style.transform = `translate3d(0, ${travel}px, 0)`;
 		}
 		#dragEnd(surface, { deltaY, velocityY, duration, cancelled }) {
 			const _ = this;
@@ -354,17 +550,74 @@
 			}
 			if (!drag.claimed) return;
 			_.dialog?.classList.add("transitioning");
+			if (_.#snapPoints.length) {
+				_.#releaseToSnap(drag, velocityY, cancelled);
+				return;
+			}
+			const travel = deltaY - drag.claimOffset;
 			const flick = !cancelled && velocityY > _.#flickVelocity;
-			const pastThreshold = !cancelled && deltaY > _.#dragThreshold && velocityY > -.05;
+			const pastThreshold = !cancelled && travel > _.#dragThreshold && velocityY > -.05;
 			if (flick || pastThreshold) _.hide();
 			else if (_.dialog) _.dialog.style.transform = "";
+		}
+		/**
+		* Settles a snapping sheet after release
+		* @param {Object} drag - The drag state as it stood at release
+		* @param {number} velocityY - Release velocity in px/ms, positive downward
+		* @param {boolean} cancelled - Whether the pointer was cancelled
+		*/
+		#releaseToSnap(drag, velocityY, cancelled) {
+			const _ = this;
+			if (cancelled) {
+				_.#commitSnap(_.#activeSnap);
+				return;
+			}
+			if (drag.belowLowest > 0) {
+				if (velocityY > _.#flickVelocity || drag.belowLowest > _.#dragThreshold) _.hide();
+				else _.#commitSnap(_.#snapPoints[0]);
+				return;
+			}
+			const snapsPx = _.#snapsPx();
+			const targetPx = resolveSnapTarget({
+				currentPx: _.dialog?.getBoundingClientRect().height ?? 0,
+				velocityY,
+				snapsPx,
+				flickVelocity: _.#flickVelocity
+			});
+			if (targetPx === null) {
+				_.hide();
+				return;
+			}
+			_.#commitSnap(_.#snapPoints[snapsPx.indexOf(targetPx)]);
+		}
+		/**
+		* Settles the sheet on a snap, reflects it, and announces the change
+		* @param {number} value - The snap in dvh percent
+		*/
+		#commitSnap(value) {
+			const _ = this;
+			const from = _.#activeSnap;
+			const dialog = _.dialog;
+			if (dialog) {
+				dialog.style.transform = "";
+				dialog.style.height = `${value}dvh`;
+			}
+			_.#snap = value;
+			_.setAttribute("snap", value);
+			if (from !== value) _.dispatchEvent(new CustomEvent("snapChange", {
+				bubbles: true,
+				detail: {
+					from,
+					to: value
+				}
+			}));
 		}
 		/**
 		* Runs when a CSS transition finishes
 		* @param {TransitionEvent} e - The transition event
 		*/
 		#handleTransitionEnd(e) {
-			if (e.target === this.dialog && e.propertyName === "transform") this.dialog.classList.remove("transitioning");
+			if (e.target === this.dialog && (e.propertyName === "transform" || e.propertyName === "height")) this.dialog.classList.remove("transitioning");
 		}
 	};
 	var BottomSheetContent = class extends HTMLElement {

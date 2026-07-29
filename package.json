@@ -43,7 +43,7 @@
 		"build": "NODE_ENV=production node scripts/build.mjs",
 		"dev": "NODE_ENV=development node scripts/build.mjs",
 		"serve": "NODE_ENV=development node scripts/build.mjs",
-		"test": "node --test test/",
+		"test": "node --test \"test/*.test.js\"",
 		"lint": "eslint src/ scripts/ test/",
 		"format": "prettier --write .",
 		"prepublishOnly": "npm run build"
