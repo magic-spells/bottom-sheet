@@ -17,7 +17,7 @@
 	   --bs-content-padding would double up for anyone already padding their
 	   own content wrapper to make up for its absence. */
 	--bs-content-padding-block: 0;
-	--bs-transition-duration: 300ms;
+	--bs-transition-duration: 400ms;
 	/* Decelerate-only. Every transition here follows a release or a deliberate
 	   trigger, so the motion must start at speed and settle — `ease` softens
 	   the start, which reads as a hitch when a drag hands off to the animation. */
