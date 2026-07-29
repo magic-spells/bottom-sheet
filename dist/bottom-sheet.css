@@ -4,6 +4,7 @@
   --bs-panel-border-radius: 25px;
   --bs-panel-inset-x: 12px;
   --bs-panel-inset-bottom: 12px;
+  --bs-panel-bleed: 60px;
   --bs-panel-box-shadow: 0 1px 20px -4px #0000004d, 0 0 7px 0 #0000001a;
   --bs-handle-color: #bbb;
   --bs-handle-width: 50px;
@@ -26,7 +27,8 @@ dialog-panel:has(bottom-sheet) > dialog {
   max-height: var(--bs-panel-max-height);
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  box-shadow: var(--bs-panel-box-shadow);
+  box-shadow: 0 var(--bs-panel-bleed) 0 0 var(--bs-panel-background),
+		var(--bs-panel-box-shadow);
   will-change: transform;
   border: none;
   border-bottom-right-radius: 0;
@@ -92,6 +94,7 @@ dialog-panel:has(bottom-sheet[inset]) > dialog {
   width: auto;
   max-width: none;
   margin-bottom: calc(var(--bs-panel-inset-bottom) + env(safe-area-inset-bottom, 0px));
+  box-shadow: var(--bs-panel-box-shadow);
   padding-bottom: 0;
 }
 

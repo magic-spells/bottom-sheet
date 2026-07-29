@@ -161,6 +161,7 @@ Set these on `:root`, a panel, or another ancestor.
 | `--bs-panel-background` | `white` | Sheet background |
 | `--bs-panel-max-height` | `85vh` | Maximum sheet height. Inert when `snap-points` is set |
 | `--bs-panel-border-radius` | `25px` | Top corner radius, or all four with `inset` |
+| `--bs-panel-bleed` | `60px` | Off-screen fill of panel colour below an edge-anchored sheet, so an upward rubber-band drag never reveals the page beneath. Not applied with `inset` |
 | `--bs-panel-inset-x` | `12px` | Left and right gap. `inset` only |
 | `--bs-panel-inset-bottom` | `12px` | Gap below the sheet, added on top of the safe area. `inset` only |
 | `--bs-panel-box-shadow` | layered shadow | Sheet elevation |
