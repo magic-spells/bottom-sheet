@@ -519,6 +519,51 @@
 				justify-self: end;
 			}
 
+			/* One attribute built from three switches, so it breaks the row's
+			   label · control · readout shape: the label and the joined readout
+			   keep the top line and the switches sit under them, which reads far
+			   quicker than three numbers strung out along a single line. Two
+			   lines tall, so it stretches whichever cell it shares a row with. */
+			.theme-snaps {
+				grid-template-columns: minmax(0, 1fr) auto;
+				gap: 0.7rem 1rem;
+			}
+
+			.theme-snaps > .theme-label {
+				grid-area: 1 / 1;
+			}
+
+			.theme-snaps > .theme-value {
+				grid-area: 1 / 2;
+			}
+
+			.theme-snaps > .snap-set {
+				grid-area: 2 / 1 / 3 / 3;
+			}
+
+			.snap-set {
+				display: flex;
+				align-items: center;
+				gap: 1.5rem;
+			}
+
+			.snap-toggle {
+				display: flex;
+				align-items: center;
+				gap: 0.55rem;
+				cursor: pointer;
+			}
+
+			.snap-num {
+				color: var(--cream-dim);
+				font-family: var(--font-mono);
+				font-size: 0.78rem;
+			}
+
+			.snap-toggle:has(input:checked) .snap-num {
+				color: var(--ember-text);
+			}
+
 			.theme-row > select {
 				justify-self: end;
 				width: 110px;
@@ -943,6 +988,12 @@
 					padding-inline: 1rem;
 				}
 
+				/* Already stacked; on a phone the switches spread to the full
+				   width rather than bunching at the start. */
+				.theme-snaps > .snap-set {
+					justify-content: space-between;
+				}
+
 				.code-block {
 					padding-inline: 1rem;
 					font-size: 0.76rem;
@@ -1337,10 +1388,10 @@ sheet.maxDisplayWidth = Infinity;</pre>
 					theme one sheet without touching any other, and without a selector of your own.
 				</p>
 				<p class="demo-desc">
-					The last switches are attributes on the <code>&lt;bottom-sheet&gt;</code> itself, so they
-					toggle rather than dial. Each snap has its own switch and they're handed over in the order
-					you flipped them — the parser sorts and dedupes, so the sheet always opens at the shortest
-					one that's on. Leave a single snap enabled and it still works.
+					The switches are attributes on the <code>&lt;bottom-sheet&gt;</code> itself, so they
+					toggle rather than dial. Each snap gets its own, and the three are handed over unsorted —
+					the parser sorts and dedupes, so the sheet always opens at the shortest one that's on.
+					Leave a single snap enabled and it still works.
 				</p>
 				<p class="demo-desc">
 					Set the dials first — an open modal makes everything behind it inert, so these controls
@@ -1431,14 +1482,14 @@ sheet.maxDisplayWidth = Infinity;</pre>
 							min="80"
 							max="600"
 							step="10"
-							value="280" />
-						<span class="theme-value">280ms</span>
+							value="400" />
+						<span class="theme-value">400ms</span>
 					</label>
 					<label class="theme-row">
 						<span class="theme-label">Snap curve</span>
 						<select id="theme-curve">
-							<option value="cubic-bezier(0.32, 0.72, 0, 1)">Default (no overshoot)</option>
-							<option value="cubic-bezier(0.22, 1.2, 0.36, 1)">Back-out, subtle (1.2% over)</option>
+							<option value="cubic-bezier(0.2, 1.25, 0.3, 1)">Default (2% over)</option>
+							<option value="cubic-bezier(0.32, 0.72, 0, 1)">Flat (no overshoot)</option>
 							<option value="cubic-bezier(0.25, 1.4, 0.45, 1)">Back-out, medium (5.3% over)</option>
 							<option value="cubic-bezier(0.34, 1.56, 0.64, 1)">Back-out, full (9.8% over)</option>
 						</select>
@@ -1460,6 +1511,27 @@ sheet.maxDisplayWidth = Infinity;</pre>
 						<input type="range" id="theme-overlay" min="0" max="95" value="72" />
 						<span class="theme-value">0.72</span>
 					</label>
+					<!-- Three switches for one attribute, so they share a cell and a
+					     single readout showing the value they build between them.
+					     A <div>, not a <label>: each switch carries its own. -->
+					<div class="theme-row theme-snaps">
+						<span class="theme-label">Snap points</span>
+						<span class="snap-set">
+							<label class="snap-toggle">
+								<span class="snap-num">36</span>
+								<input type="checkbox" role="switch" data-snap-point="36" />
+							</label>
+							<label class="snap-toggle">
+								<span class="snap-num">66</span>
+								<input type="checkbox" role="switch" data-snap-point="66" />
+							</label>
+							<label class="snap-toggle">
+								<span class="snap-num">96</span>
+								<input type="checkbox" role="switch" data-snap-point="96" />
+							</label>
+						</span>
+						<span class="theme-value" id="theme-snap-value">off</span>
+					</div>
 					<label class="theme-row">
 						<span class="theme-label">Inset · sides</span>
 						<input
@@ -1488,29 +1560,14 @@ sheet.maxDisplayWidth = Infinity;</pre>
 						<span class="theme-value">off</span>
 					</label>
 					<label class="theme-row">
-						<span class="theme-label">Snap 36</span>
-						<input type="checkbox" role="switch" data-snap-point="36" />
-						<span class="theme-value">off</span>
-					</label>
-					<label class="theme-row">
-						<span class="theme-label">Snap 66</span>
-						<input type="checkbox" role="switch" data-snap-point="66" />
-						<span class="theme-value">off</span>
-					</label>
-					<label class="theme-row">
-						<span class="theme-label">Snap 96</span>
-						<input type="checkbox" role="switch" data-snap-point="96" />
-						<span class="theme-value">off</span>
-					</label>
-					<label class="theme-row">
 						<span class="theme-label">Spring settle</span>
 						<input type="checkbox" id="theme-spring" role="switch" checked />
 						<span class="theme-value">on</span>
 					</label>
 					<label class="theme-row">
 						<span class="theme-label">· attraction</span>
-						<input type="range" id="theme-attraction" min="5" max="200" step="1" value="53" />
-						<span class="theme-value">0.053</span>
+						<input type="range" id="theme-attraction" min="5" max="200" step="1" value="65" />
+						<span class="theme-value">0.065</span>
 					</label>
 					<label class="theme-row">
 						<span class="theme-label">· friction</span>
@@ -1791,21 +1848,24 @@ sheet.hide();</pre>
 					</div>
 					<div class="ref-row">
 						<div><code>--bs-snap-duration</code></div>
-						<div><code>280ms</code></div>
+						<div><code>400ms</code></div>
 						<div>
-							Settle onto a snap point. Kept separate because a snap-to-snap move covers a fraction
-							of the distance an open or a close does, and one shared duration stretches that short
-							move out until it reads as hesitation.
+							Settle onto a snap point. Matches the open and close duration, but stays a separate
+							property so the settle can carry its own curve — what differs is the arrival, not the
+							length.
 						</div>
 					</div>
 					<div class="ref-row">
 						<div><code>--bs-snap-timing</code></div>
-						<div><code>--bs-transition-timing</code></div>
+						<div><code>cubic-bezier(0.2, 1.25, 0.3, 1)</code></div>
 						<div>
-							Timing function for the snap settle — inherits until overridden. A
-							<code>cubic-bezier</code> whose second control point exceeds <code>1</code>
-							overshoots the snap and springs back. Overshoot is a share of the travelled distance,
-							so check that your tallest snap still clears the viewport.
+							Timing function for the snap settle, and the only curve here that does not decelerate
+							to a dead stop: it reaches the snap at 38% of the duration, drifts about 2% of the
+							travelled distance past it, then eases back — roughly what the spring produces at its
+							default tuning. Only reaches the sheet with <code>spring="none"</code>. Any
+							<code>cubic-bezier</code> whose second control point exceeds
+							<code>1</code> overshoots; overshoot is a share of the travelled distance, so check
+							that your tallest snap still clears the viewport.
 						</div>
 					</div>
 					<div class="ref-row">
@@ -2451,12 +2511,18 @@ sheet.hide();</pre>
 			};
 
 			// Overshoot is a share of the travelled distance, so how far past the
-			// snap it lands depends on the gap between snaps, not the curve alone
+			// snap it lands depends on the gap between snaps, not the curve alone.
+			// Only reaches the sheet with `spring` off — a spring settle writes
+			// the height frame by frame and never runs a CSS transition.
 			const curveInput = $('#theme-curve');
 			const applyCurve = () => {
 				themePanel.style.setProperty('--bs-snap-timing', curveInput.value);
-				curveInput.parentElement.querySelector('.theme-value').textContent =
-					curveInput.selectedIndex === 0 ? 'default' : 'back-out';
+				curveInput.parentElement.querySelector('.theme-value').textContent = [
+					'default',
+					'flat',
+					'back-out',
+					'back-out',
+				][curveInput.selectedIndex];
 			};
 
 			const applyInset = () => {
@@ -2470,21 +2536,18 @@ sheet.hide();</pre>
 			// unsorted on purpose — the parser sorts and dedupes, so the sheet
 			// always opens at the shortest one that happens to be on.
 			const snapInputs = [...document.querySelectorAll('.theme-grid input[data-snap-point]')];
+			const themeSnapReadout = $('#theme-snap-value');
 
 			const applySnapPoints = () => {
 				const active = snapInputs.filter((input) => input.checked);
+				const value = active.map((input) => input.dataset.snapPoint).join(',');
 
-				for (const input of snapInputs) {
-					input.parentElement.querySelector('.theme-value').textContent = input.checked
-						? 'on'
-						: 'off';
-				}
+				// The three switches share one readout, so it shows the attribute
+				// they build rather than each switch's own on/off
+				themeSnapReadout.textContent = value || 'off';
 
 				if (active.length) {
-					themeSheet.setAttribute(
-						'snap-points',
-						active.map((input) => input.dataset.snapPoint).join(',')
-					);
+					themeSheet.setAttribute('snap-points', value);
 				} else {
 					// Clearing snap-points resets the inline height on its own;
 					// drop the reflected snap too so a re-enable starts fresh

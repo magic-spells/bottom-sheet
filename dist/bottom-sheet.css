@@ -14,8 +14,8 @@
   --bs-content-padding-block: 0;
   --bs-transition-duration: .4s;
   --bs-transition-timing: cubic-bezier(.32, .72, 0, 1);
-  --bs-snap-duration: .28s;
-  --bs-snap-timing: var(--bs-transition-timing);
+  --bs-snap-duration: .4s;
+  --bs-snap-timing: cubic-bezier(.2, 1.25, .3, 1);
   --bs-overlay-background: #00000080;
   --bs-overlay-blur: 5px;
 }

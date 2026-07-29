@@ -438,7 +438,7 @@ var BottomSheet = class extends HTMLElement {
 		if (_.#engine) return _.#engine;
 		const [attraction, friction] = String(_.getAttribute("spring") ?? "").split(/[\s,]+/).map(Number);
 		const options = {
-			attraction: .053,
+			attraction: .065,
 			friction: .3
 		};
 		if (Number.isFinite(attraction) && attraction > 0 && attraction < 1) options.attraction = attraction;

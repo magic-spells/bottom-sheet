@@ -29,14 +29,20 @@
 	   trigger, so the motion must start at speed and settle — `ease` softens
 	   the start, which reads as a hitch when a drag hands off to the animation. */
 	--bs-transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
-	/* Settling onto a snap covers a fraction of the distance an open or a close
-	   does. Sharing one duration with them stretches that short move out until
-	   it reads as hesitation, so the settle is tuned on its own. Timing
-	   inherits until it is deliberately overridden — the default curve puts 90%
-	   of the travel in the first third and creeps through the rest, so this is
-	   the knob to reach for if the arrival still feels soft. */
-	--bs-snap-duration: 280ms;
-	--bs-snap-timing: var(--bs-transition-timing);
+	/* The settle keeps its own duration and curve so the two can be retuned
+	   without touching the open and the close. The duration currently matches
+	   theirs; the curve is what actually differs, and the pairing is why this
+	   stayed a separate pair of properties rather than a reused one.
+	   The curve is the one place here that deliberately does not decelerate to
+	   a dead stop: it reaches the snap at 38% of the duration, drifts ~2% of
+	   the travelled distance past it, and eases back. That 2% is what the
+	   spring settle produces at its default tuning, so switching `spring` off
+	   changes the timing source without changing the character of the arrival.
+	   Overshoot is a share of the distance travelled, not a fixed number of
+	   pixels, so a long move past the tallest snap briefly exceeds it — check
+	   that snap still clears the viewport if you dial the bounce up. */
+	--bs-snap-duration: 400ms;
+	--bs-snap-timing: cubic-bezier(0.2, 1.25, 0.3, 1);
 	--bs-overlay-background: rgba(0, 0, 0, 0.5);
 	--bs-overlay-blur: 5px;
 }

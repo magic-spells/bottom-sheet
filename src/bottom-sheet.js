@@ -148,11 +148,11 @@ class BottomSheet extends HTMLElement {
 
 		// Attraction pulls toward the snap; friction bleeds off the speed that
 		// pull builds. Raising both together is not a wash — friction is applied
-		// every frame and wins, so 0.05/0.30 damps harder than 0.034/0.22
-		// despite the stronger pull: a snap-to-snap move reaches the snap in
-		// ~430ms with almost no overshoot, and stops ringing ~270ms sooner.
-		// Tighter and more controlled rather than springier.
-		const options = { attraction: 0.053, friction: 0.3 };
+		// every frame and wins, so 0.065/0.30 damps harder than 0.034/0.22
+		// despite the stronger pull. A snap-to-snap move reaches the snap in
+		// ~270ms and overshoots ~2.4% of the gap it travelled, so the sheet
+		// arrives with a small bounce rather than easing to a dead stop.
+		const options = { attraction: 0.065, friction: 0.3 };
 		if (Number.isFinite(attraction) && attraction > 0 && attraction < 1) {
 			options.attraction = attraction;
 		}
