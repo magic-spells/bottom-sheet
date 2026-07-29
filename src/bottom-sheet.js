@@ -1,4 +1,5 @@
 import './bottom-sheet.css';
+import { DragGesture } from './drag-gesture.js';
 
 /**
  * A throttle utility function to limit how often a function can be called
@@ -18,7 +19,7 @@ const throttle = (func, limit) => {
 };
 
 /**
- * BottomSheet class that manages touch gestures and delegates
+ * BottomSheet class that manages drag gestures and delegates
  * show/hide to a parent <dialog-panel> element.
  *
  * Expected HTML structure:
@@ -33,11 +34,14 @@ const throttle = (func, limit) => {
  */
 class BottomSheet extends HTMLElement {
 	#handlers = {};
-	#drag = {};
+	#gestures = [];
+	#drag = { active: false };
+	#scrollVeto = null;
 
 	// physics constants
 	#overscrollResistance = 0.1;
 	#dragThreshold = 100;
+	#flickVelocity = 0.5;
 
 	// private backing fields
 	#maxDisplayWidth = Infinity;
@@ -142,33 +146,19 @@ class BottomSheet extends HTMLElement {
 		super();
 		const _ = this;
 
-		_.#drag = {
-			isDragging: false,
-			startY: 0,
-			currentY: 0,
-			delta: 0,
-			direction: null,
-			isHeader: false,
-			isBackdrop: false,
-			isAtTop: false,
-		};
-
 		_.#handlers = {
-			touchStart: _.#panelDragStart.bind(_),
-			touchMove: _.#panelDragMove.bind(_),
-			touchEnd: _.#panelDragEnd.bind(_),
 			transitionEnd: _.#handleTransitionEnd.bind(_),
 			windowResize: throttle(() => {
 				if (window.innerWidth > _.maxDisplayWidth && _.panel?.isOpen) {
 					_.hide();
 				}
 			}, 100),
-			// Lazily bind backdrop touch events on first show (backdrop may not exist at connectedCallback)
+			// Lazily bind the backdrop gesture on first show (it may not exist at connectedCallback)
 			// Also add transitioning class so the open slide-up animates
 			beforeShow: () => {
 				const backdrop = _.backdrop;
 				if (backdrop && !_.#backdropBound) {
-					_.#bindTouchEvents(backdrop);
+					_.#gestures.push(new DragGesture(backdrop, _.#surfaceCallbacks('backdrop')));
 					_.#backdropBound = true;
 				}
 				_.dialog?.classList.add('transitioning');
@@ -197,30 +187,6 @@ class BottomSheet extends HTMLElement {
 		this.panel?.hide();
 	}
 
-	/**
-	 * Binds touch event listeners
-	 */
-	#bindTouchEvents(el) {
-		const _ = this;
-		if (!el) return;
-		el.addEventListener('touchstart', _.#handlers.touchStart, { capture: true });
-		el.addEventListener('touchmove', _.#handlers.touchMove, { passive: false });
-		el.addEventListener('touchend', _.#handlers.touchEnd);
-		el.addEventListener('touchcancel', _.#handlers.touchEnd);
-	}
-
-	/**
-	 * Unbinds touch event listeners
-	 */
-	#unbindTouchEvents(el) {
-		const _ = this;
-		if (!el) return;
-		el.removeEventListener('touchstart', _.#handlers.touchStart, { capture: true });
-		el.removeEventListener('touchmove', _.#handlers.touchMove, { passive: false });
-		el.removeEventListener('touchend', _.#handlers.touchEnd);
-		el.removeEventListener('touchcancel', _.#handlers.touchEnd);
-	}
-
 	connectedCallback() {
 		const _ = this;
 
@@ -230,11 +196,22 @@ class BottomSheet extends HTMLElement {
 
 		window.addEventListener('resize', _.#handlers.windowResize);
 
-		_.#bindTouchEvents(_.header);
-		_.#bindTouchEvents(_.content);
+		if (_.header) {
+			_.#gestures.push(new DragGesture(_.header, _.#surfaceCallbacks('header')));
+		}
+
+		if (_.content) {
+			_.#gestures.push(new DragGesture(_.content, _.#surfaceCallbacks('content')));
+			_.#scrollVeto = (event) => {
+				if (_.#drag.active && _.#drag.claimed && event.cancelable) {
+					event.preventDefault();
+				}
+			};
+			_.content.addEventListener('touchmove', _.#scrollVeto, { passive: false });
+		}
 
 		// Backdrop may not exist yet (dialog-panel auto-creates it),
-		// so bind touch events lazily on first show
+		// so bind its gesture lazily on first show
 		_.#backdropBound = false;
 		_.#panelRef?.addEventListener('beforeShow', _.#handlers.beforeShow);
 
@@ -248,13 +225,17 @@ class BottomSheet extends HTMLElement {
 
 		window.removeEventListener('resize', _.#handlers.windowResize);
 
-		_.#unbindTouchEvents(_.header);
-		_.#unbindTouchEvents(_.content);
-
-		if (_.#backdropBound) {
-			_.#unbindTouchEvents(_.#panelRef?.querySelector('dialog-backdrop'));
-			_.#backdropBound = false;
+		for (const gesture of _.#gestures) {
+			gesture.destroy();
 		}
+		_.#gestures = [];
+
+		if (_.content && _.#scrollVeto) {
+			_.content.removeEventListener('touchmove', _.#scrollVeto);
+		}
+		_.#scrollVeto = null;
+		_.#backdropBound = false;
+		_.#drag = { active: false };
 
 		_.#panelRef?.removeEventListener('beforeShow', _.#handlers.beforeShow);
 
@@ -266,31 +247,30 @@ class BottomSheet extends HTMLElement {
 		_.#dialogRef = null;
 	}
 
-	/**
-	 * Fired when a touch event starts on the panel
-	 * @param {TouchEvent} e - The touch event
-	 */
-	#panelDragStart(e) {
+	#surfaceCallbacks(surface) {
 		const _ = this;
-		const drag = _.#drag;
+		return {
+			onStart: () => _.#dragStart(surface),
+			onMove: (info) => _.#dragMove(surface, info),
+			onEnd: (info) => _.#dragEnd(surface, info),
+		};
+	}
 
-		drag.startY = e.targetTouches[0].screenY;
-		drag.direction = null;
-		drag.delta = 0;
-
-		_.dialog?.classList.remove('transitioning');
-
-		const isHeader = !!e.target.closest('bottom-sheet-header');
-		const isBackdrop = !!e.target.closest('dialog-backdrop');
-		const isAtTop = _.content?.scrollTop === 0;
-
-		drag.isHeader = isHeader;
-		drag.isBackdrop = isBackdrop;
-		drag.isAtTop = isAtTop;
-
-		if (isHeader || isBackdrop || isAtTop) {
-			drag.isDragging = true;
+	#dragStart(surface) {
+		const _ = this;
+		const state = _.panel?.getAttribute('state');
+		if (_.panel?.hasAttribute('morph') && (state === 'showing' || state === 'hiding')) {
+			return;
 		}
+
+		_.#drag = {
+			active: true,
+			claimed: false,
+			surface,
+			isAtTop: surface === 'content' ? _.content?.scrollTop === 0 : true,
+			direction: null,
+		};
+		_.dialog?.classList.remove('transitioning');
 	}
 
 	/**
@@ -302,89 +282,53 @@ class BottomSheet extends HTMLElement {
 		return Math.sqrt(value) * 10 * this.#overscrollResistance;
 	}
 
-	/**
-	 * Fired when a touch event moves on the panel
-	 * @param {TouchEvent} e - The touch event
-	 */
-	#panelDragMove(e) {
+	#dragMove(surface, { deltaY, direction }) {
 		const _ = this;
 		const drag = _.#drag;
 
-		if (!drag.isDragging) return;
-
-		drag.currentY = e.targetTouches[0].screenY;
-		drag.delta = drag.currentY - drag.startY;
-
+		if (!drag.active) return;
 		if (!drag.direction) {
-			drag.direction = drag.delta < 0 ? 'up' : 'down';
+			drag.direction = direction;
 		}
 
-		// Content area: allow normal scrolling unless at top and dragging down
-		if (!drag.isHeader && !drag.isBackdrop) {
-			if (!drag.isAtTop) return;
-			if (drag.direction === 'up') return;
-		}
-
-		if (e.cancelable) e.preventDefault();
-		e.stopPropagation();
-
-		const dialog = _.dialog;
-		if (!dialog) return;
-
-		// Upward movement: apply strong resistance (rubber-band effect)
-		if (drag.delta < 0) {
-			const resistedDelta = _.#applyResistance(Math.abs(drag.delta));
-			dialog.style.transform = `translate3d(0,${-resistedDelta}px,0)`;
+		if (surface === 'content' && (!drag.isAtTop || drag.direction === 'up')) {
 			return;
 		}
 
-		// Downward movement: natural movement for dismissal
-		if (drag.delta > 0) {
-			dialog.style.transform = `translate3d(0,${drag.delta}px,0)`;
+		drag.claimed = true;
+		if (deltaY < 0) {
+			const resistedDelta = _.#applyResistance(-deltaY);
+			if (_.dialog) {
+				_.dialog.style.transform = `translate3d(0, ${-resistedDelta}px, 0)`;
+			}
+		} else if (_.dialog) {
+			_.dialog.style.transform = `translate3d(0, ${deltaY}px, 0)`;
 		}
 	}
 
-	/**
-	 * Fired when a touch event ends on the panel
-	 */
-	#panelDragEnd() {
+	#dragEnd(surface, { deltaY, velocityY, duration, cancelled }) {
 		const _ = this;
 		const drag = _.#drag;
 
-		if (!drag.isDragging) return;
-		drag.isDragging = false;
+		if (!drag.active) return;
+		_.#drag = { active: false };
 
-		const dialog = _.dialog;
-		if (!dialog) return;
-
-		// No movement — nothing to animate
-		if (drag.delta === 0) {
-			drag.direction = null;
-			return;
-		}
-
-		dialog.classList.add('transitioning');
-
-		// Upward drag: always snap back
-		if (drag.delta < 0) {
-			drag.delta = 0;
-			drag.direction = null;
-			dialog.style.transform = '';
-			return;
-		}
-
-		// Downward drag past threshold: dismiss
-		if (drag.delta > _.#dragThreshold) {
-			drag.delta = 0;
-			drag.direction = null;
+		if (surface === 'backdrop' && Math.abs(deltaY) < 10 && duration < 300) {
 			_.hide();
 			return;
 		}
 
-		// Snap back to open position
-		drag.delta = 0;
-		drag.direction = null;
-		dialog.style.transform = '';
+		if (!drag.claimed) return;
+		_.dialog?.classList.add('transitioning');
+
+		const flick = !cancelled && velocityY > _.#flickVelocity;
+		const pastThreshold = !cancelled && deltaY > _.#dragThreshold && velocityY > -0.05;
+
+		if (flick || pastThreshold) {
+			_.hide();
+		} else if (_.dialog) {
+			_.dialog.style.transform = '';
+		}
 	}
 
 	/**

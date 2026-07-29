@@ -35,6 +35,7 @@ dialog-panel:has(bottom-sheet) > dialog {
 	top: auto;
 	margin: 0;
 	padding: 0;
+	padding-bottom: env(safe-area-inset-bottom, 0px);
 	overflow: hidden;
 	box-shadow: var(--bs-panel-box-shadow);
 	will-change: transform;
@@ -136,6 +137,8 @@ bottom-sheet-content {
 	display: block;
 	box-sizing: border-box;
 	overflow-y: scroll;
+	overscroll-behavior-y: contain;
+	touch-action: pan-y;
 	-webkit-overflow-scrolling: touch;
 	padding: 0 var(--bs-content-padding);
 	flex: 1;
