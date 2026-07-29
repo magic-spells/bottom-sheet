@@ -71,6 +71,8 @@ test('DragGesture reports a complete start, move, and end flow', () => {
 	});
 
 	el.fire('pointerdown', ev({ clientY: 20, timeStamp: 10 }));
+	assert.equal(el.capturedPointerId, null, 'pointerdown must not capture');
+
 	el.fire('pointermove', ev({ clientY: 120, timeStamp: 110 }));
 	el.fire('pointerup', ev({ clientY: 130, timeStamp: 130 }));
 
@@ -86,6 +88,48 @@ test('DragGesture reports a complete start, move, and end flow', () => {
 	assert.equal(calls[2][1].duration, 120);
 	assert.ok(calls[2][1].velocityY > 0.9);
 	assert.equal(calls[2][1].cancelled, false);
+
+	gesture.destroy();
+});
+
+test('DragGesture leaves a tap uncaptured so clicks reach interactive children', () => {
+	const el = new StubElement();
+	const gesture = new DragGesture(el);
+
+	// A tap wanders a pixel or two before release. Capturing here would
+	// retarget pointerup to `el` and compose the click on `el` instead of
+	// the button the user actually pressed.
+	el.fire('pointerdown', ev({ clientY: 40, timeStamp: 0 }));
+	el.fire('pointermove', ev({ clientY: 43, timeStamp: 20 }));
+	el.fire('pointerup', ev({ clientY: 42, timeStamp: 40 }));
+
+	assert.equal(el.capturedPointerId, null);
+
+	gesture.destroy();
+});
+
+test('DragGesture captures the pointer once movement passes the slop threshold', () => {
+	const el = new StubElement();
+	const gesture = new DragGesture(el);
+
+	el.fire('pointerdown', ev({ clientY: 40, timeStamp: 0 }));
+	el.fire('pointermove', ev({ clientY: 44, timeStamp: 20 }));
+	assert.equal(el.capturedPointerId, null, 'still within slop');
+
+	el.fire('pointermove', ev({ clientY: 60, timeStamp: 40 }));
+	assert.equal(el.capturedPointerId, 1, 'captured once it is clearly a drag');
+
+	gesture.destroy();
+});
+
+test('DragGesture captures on upward drags too', () => {
+	const el = new StubElement();
+	const gesture = new DragGesture(el);
+
+	el.fire('pointerdown', ev({ clientY: 200, timeStamp: 0 }));
+	el.fire('pointermove', ev({ clientY: 170, timeStamp: 20 }));
+
+	assert.equal(el.capturedPointerId, 1);
 
 	gesture.destroy();
 });

@@ -32,8 +32,13 @@ class VelocityTracker {
 	}
 }
 
+// Movement, in pixels, that separates a tap from a drag. Below this the
+// pointer stays uncaptured so clicks compose on whatever the user pressed.
+const SLOP = 5;
+
 class DragGesture {
 	#active = false;
+	#captured = false;
 	#el;
 	#handlers;
 	#onStart;
@@ -64,15 +69,22 @@ class DragGesture {
 
 	#handlePointerDown(event) {
 		const _ = this;
-		if (!event.isPrimary || _.#active) return;
+		// A captured gesture is guaranteed its own pointerup, so never let a
+		// second pointer interrupt it. An uncaptured one may have been
+		// abandoned outside the element, so allow it to be restarted.
+		if (!event.isPrimary || (_.#active && _.#captured)) return;
 
 		_.#active = true;
+		_.#captured = false;
 		_.#pointerId = event.pointerId;
 		_.#startY = event.clientY;
 		_.#startTime = event.timeStamp;
 		_.#tracker.reset();
 		_.#tracker.add(event.clientY, event.timeStamp);
-		_.#el.setPointerCapture?.(event.pointerId);
+		// Deliberately no setPointerCapture here. Capturing on pointerdown
+		// retargets pointerup to this element, so the browser composes the
+		// click on it instead of the button the user pressed — which silently
+		// breaks every interactive child of a drag surface.
 		_.#onStart?.({ event, y: event.clientY });
 	}
 
@@ -81,6 +93,14 @@ class DragGesture {
 		if (!_.#active || event.pointerId !== _.#pointerId) return;
 
 		const deltaY = event.clientY - _.#startY;
+
+		// Once the pointer has clearly moved this is a drag, not a tap, so
+		// capture to keep receiving events if it leaves the element.
+		if (!_.#captured && Math.abs(deltaY) > SLOP) {
+			_.#captured = true;
+			_.#el.setPointerCapture?.(event.pointerId);
+		}
+
 		_.#tracker.add(event.clientY, event.timeStamp);
 		_.#onMove?.({
 			event,
@@ -95,6 +115,7 @@ class DragGesture {
 		if (!_.#active || event.pointerId !== _.#pointerId) return;
 
 		_.#active = false;
+		_.#captured = false;
 		_.#onEnd?.({
 			event,
 			deltaY: event.clientY - _.#startY,
@@ -111,6 +132,7 @@ class DragGesture {
 			_.#el.removeEventListener(type, handler);
 		}
 		_.#active = false;
+		_.#captured = false;
 		_.#pointerId = null;
 		_.#tracker.reset();
 	}

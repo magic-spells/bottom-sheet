@@ -26,8 +26,10 @@ var VelocityTracker = class {
 		this.#samples = [];
 	}
 };
+var SLOP = 5;
 var DragGesture = class {
 	#active = false;
+	#captured = false;
 	#el;
 	#handlers;
 	#onStart;
@@ -53,14 +55,14 @@ var DragGesture = class {
 	}
 	#handlePointerDown(event) {
 		const _ = this;
-		if (!event.isPrimary || _.#active) return;
+		if (!event.isPrimary || _.#active && _.#captured) return;
 		_.#active = true;
+		_.#captured = false;
 		_.#pointerId = event.pointerId;
 		_.#startY = event.clientY;
 		_.#startTime = event.timeStamp;
 		_.#tracker.reset();
 		_.#tracker.add(event.clientY, event.timeStamp);
-		_.#el.setPointerCapture?.(event.pointerId);
 		_.#onStart?.({
 			event,
 			y: event.clientY
@@ -70,6 +72,10 @@ var DragGesture = class {
 		const _ = this;
 		if (!_.#active || event.pointerId !== _.#pointerId) return;
 		const deltaY = event.clientY - _.#startY;
+		if (!_.#captured && Math.abs(deltaY) > SLOP) {
+			_.#captured = true;
+			_.#el.setPointerCapture?.(event.pointerId);
+		}
 		_.#tracker.add(event.clientY, event.timeStamp);
 		_.#onMove?.({
 			event,
@@ -82,6 +88,7 @@ var DragGesture = class {
 		const _ = this;
 		if (!_.#active || event.pointerId !== _.#pointerId) return;
 		_.#active = false;
+		_.#captured = false;
 		_.#onEnd?.({
 			event,
 			deltaY: event.clientY - _.#startY,
@@ -95,6 +102,7 @@ var DragGesture = class {
 		const _ = this;
 		for (const [type, handler] of Object.entries(_.#handlers)) _.#el.removeEventListener(type, handler);
 		_.#active = false;
+		_.#captured = false;
 		_.#pointerId = null;
 		_.#tracker.reset();
 	}
