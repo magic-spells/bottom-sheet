@@ -463,21 +463,35 @@
 			/* ---- Theme playground ---- */
 			.theme-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-				gap: 0.5rem 2rem;
+				grid-template-columns: 1fr 1fr;
+				gap: 0 3rem;
 				margin-top: 1.5rem;
-				padding: 1.4rem 1.5rem;
+				padding: 0.4rem 1.5rem 0.9rem;
 				border: 1px solid var(--border);
 				border-radius: 12px;
 			}
 
+			/* A fixed control column so every slider, swatch and toggle shares one
+			   right edge, and the readouts line up in a single monospace column.
+			   Colour rows have no readout — their swatch simply lands in the same
+			   control column and the third cell stays empty. */
 			.theme-row {
 				display: grid;
-				grid-template-columns: 1fr auto 4.5ch;
+				grid-template-columns: minmax(0, 1fr) 110px 5ch;
 				align-items: center;
-				gap: 0.9rem;
-				padding: 0.32rem 0;
+				gap: 1rem;
+				padding: 0.62rem 0;
+				border-top: 1px solid var(--border);
 				cursor: pointer;
+			}
+
+			/* Two columns puts two rows against the top edge */
+			.theme-row:nth-child(-n + 2) {
+				border-top: 0;
+			}
+
+			.theme-row > input {
+				justify-self: end;
 			}
 
 			.theme-label {
@@ -493,13 +507,8 @@
 				text-align: right;
 			}
 
-			/* the color and checkbox rows have nothing in the third column */
-			.theme-row:has(input[type='color']) {
-				grid-template-columns: 1fr auto;
-			}
-
 			.theme-row input[type='range'] {
-				width: 110px;
+				width: 100%;
 				height: 2px;
 				appearance: none;
 				background: var(--border-accent);
@@ -876,6 +885,16 @@
 
 				.ref-head {
 					display: none;
+				}
+
+				.theme-grid {
+					grid-template-columns: 1fr;
+					padding-inline: 1rem;
+				}
+
+				/* back to one column, so only the very first row is on the top edge */
+				.theme-row:nth-child(2) {
+					border-top: 1px solid var(--border);
 				}
 
 				.code-block {
@@ -1294,15 +1313,23 @@ sheet.maxDisplayWidth = Infinity;</pre>
 				<h2>Every hook, on one sheet.</h2>
 				<p class="demo-desc">
 					The reference table further down lists the custom properties; this one lets you turn them.
-					Nothing here is a component API — the controls write plain
+					The sliders and swatches are not a component API — they write plain
 					<code>style.setProperty</code> calls onto the <code>&lt;dialog-panel&gt;</code>, and
-					inheritance carries them to the dialog, the handle, the padding, and the backdrop.
+					inheritance carries them to the dialog, the handle, the padding, and the backdrop. Because
+					every styling hook is an inherited custom property, you can theme one sheet without
+					touching any of the others, and without a single selector of your own.
 				</p>
 				<p class="demo-desc">
-					That's worth knowing on its own: because every hook is an inherited custom property, you
-					can theme one sheet without touching any of the others, and without a single selector of
-					your own. Set the dials first — an open modal makes everything behind it inert, so these
-					controls are unreachable while the sheet is up.
+					The last two switches are a different kind of thing. <code>inset</code> and
+					<code>snap-points</code> are attributes on the <code>&lt;bottom-sheet&gt;</code> itself,
+					so they're toggled rather than dialled. The snap switch sets
+					<code>snap-points="95,66,40"</code> — deliberately out of order, because the parser sorts
+					and dedupes, so the sheet ends up with 40, 66 and 95 and opens at the shortest. Switching
+					it back off restores the plain two-state sheet and clears the height it was holding.
+				</p>
+				<p class="demo-desc">
+					Set the dials first — an open modal makes everything behind it inert, so these controls
+					are unreachable while the sheet is up.
 				</p>
 				<div class="theme-grid">
 					<label class="theme-row">
@@ -1421,6 +1448,11 @@ sheet.maxDisplayWidth = Infinity;</pre>
 					<label class="theme-row">
 						<span class="theme-label">Inset</span>
 						<input type="checkbox" id="theme-inset" role="switch" />
+						<span class="theme-value">off</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Snap 40 · 66 · 95</span>
+						<input type="checkbox" id="theme-snap" role="switch" />
 						<span class="theme-value">off</span>
 					</label>
 				</div>
@@ -2404,11 +2436,31 @@ sheet.hide();</pre>
 					: 'off';
 			};
 
+			// Declared out of order on purpose — the parser sorts and dedupes,
+			// so this lands as [40, 66, 95] and the sheet opens at 40
+			const THEME_SNAPS = '95,66,40';
+			const snapInput = $('#theme-snap');
+
+			const applySnapPoints = () => {
+				if (snapInput.checked) {
+					themeSheet.setAttribute('snap-points', THEME_SNAPS);
+				} else {
+					// Clearing snap-points resets the inline height on its own;
+					// drop the reflected snap too so a re-enable starts fresh
+					themeSheet.removeAttribute('snap-points');
+					themeSheet.removeAttribute('snap');
+				}
+				snapInput.parentElement.querySelector('.theme-value').textContent = snapInput.checked
+					? 'on'
+					: 'off';
+			};
+
 			for (const input of themeInputs) {
 				input.addEventListener('input', () => applyProp(input));
 			}
 			overlayInput.addEventListener('input', applyOverlay);
 			insetInput.addEventListener('change', applyInset);
+			snapInput.addEventListener('change', applySnapPoints);
 
 			$('#theme-reset').addEventListener('click', () => {
 				themePanel.removeAttribute('style');
@@ -2423,6 +2475,8 @@ sheet.hide();</pre>
 				).toFixed(2);
 				insetInput.checked = false;
 				applyInset();
+				snapInput.checked = false;
+				applySnapPoints();
 			});
 		</script>
 	</body>
