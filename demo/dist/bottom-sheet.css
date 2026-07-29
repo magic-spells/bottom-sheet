@@ -37,6 +37,10 @@ dialog-panel:has(bottom-sheet) > dialog {
   overflow: hidden;
 }
 
+dialog-panel:has(bottom-sheet-footer) > dialog {
+  padding-bottom: 0;
+}
+
 dialog-panel[state="hidden"]:has(bottom-sheet) > dialog {
   opacity: 1;
   transform: translate3d(0, 100%, 0);
@@ -112,6 +116,16 @@ bottom-sheet-header:before {
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
+}
+
+bottom-sheet-footer {
+  box-sizing: border-box;
+  padding: var(--bs-footer-padding, var(--bs-content-padding));
+  padding-bottom: calc(var(--bs-footer-padding, var(--bs-content-padding)) + env(safe-area-inset-bottom, 0px));
+  background: var(--bs-footer-background, transparent);
+  touch-action: none;
+  flex-shrink: 0;
+  display: block;
 }
 
 bottom-sheet-content {

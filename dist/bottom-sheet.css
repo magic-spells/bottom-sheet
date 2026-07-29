@@ -23,22 +23,22 @@ dialog-panel:has(bottom-sheet) > dialog {
   max-height: var(--bs-panel-max-height);
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: var(--bs-panel-box-shadow);
+  will-change: transform;
   border: none;
   border-bottom-right-radius: 0;
   border-bottom-left-radius: 0;
   flex-direction: column;
   margin: 0;
+  transition: none;
   display: flex;
   position: fixed;
   inset: auto 0 0;
+  overflow: hidden;
 }
 
 dialog-panel:has(bottom-sheet-footer) > dialog {
-  box-shadow: var(--bs-panel-box-shadow);
-  will-change: transform;
   padding-bottom: 0;
-  transition: none;
-  overflow: hidden;
 }
 
 dialog-panel[state="hidden"]:has(bottom-sheet) > dialog {
