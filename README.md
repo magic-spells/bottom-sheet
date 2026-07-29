@@ -1,17 +1,20 @@
 # Bottom Sheet Web Component
 
-A lightweight, customizable Web Component for creating accessible bottom sheets. Perfect for mobile-friendly modals, menus, or interactive panels that slide in from the bottom of the screen.
+Accessible bottom-sheet custom elements built on `@magic-spells/dialog-panel`. The sheet keeps modal behavior in the native `<dialog>` layer and adds Pointer Events dragging, velocity dismissal, scroll-aware gesture policy, safe-area spacing, and optional morph transitions.
 
-[**Live Demo**](https://magic-spells.github.io/bottom-sheet/demo/)
+[**Live Demo**](./demo/)
 
 ## Features
 
-- Built on `@magic-spells/dialog-panel` for native `<dialog>` accessibility
-- Smooth open/close animations with state-driven CSS
-- Touch gestures for drag-to-close with rubber-band physics
-- Escape key handling via native `<dialog>`
-- Focus trapping via `showModal()`
-- Customizable with CSS custom properties
+- Pointer Events gestures work with mouse, touch, and pen
+- Fast downward flicks dismiss without a long drag
+- Scrollable content keeps native vertical scrolling until a downward drag starts at the top
+- Upward drags use a restrained rubber-band transform
+- Native dialog focus trapping, focus return, Escape handling, and modal semantics
+- Optional card-to-sheet morph transitions
+- Responsive display limit through `max-display-width`
+- Safe-area padding and contained vertical overscroll
+- CSS-transition animations with no physics dependency
 
 ## Installation
 
@@ -19,173 +22,182 @@ A lightweight, customizable Web Component for creating accessible bottom sheets.
 npm install @magic-spells/bottom-sheet @magic-spells/dialog-panel
 ```
 
-```javascript
-// Add to your JavaScript file
+```js
 import '@magic-spells/dialog-panel';
 import '@magic-spells/bottom-sheet';
-```
 
-Or include directly in your HTML:
-
-```html
-<script src="https://unpkg.com/@magic-spells/dialog-panel"></script>
-<script src="https://unpkg.com/@magic-spells/bottom-sheet"></script>
+import '@magic-spells/dialog-panel/css';
+import '@magic-spells/bottom-sheet/css';
 ```
 
 ## Usage
 
-```html
-<button id="show-bottom-sheet-button">Show Bottom Sheet</button>
+Keep the canonical structure intact: `dialog-panel` owns the native dialog, and `bottom-sheet` contains a header plus content.
 
-<dialog-panel id="sheet-dialog">
-	<dialog>
-		<bottom-sheet max-display-width="768">
+```html
+<button id="open-sheet">Open sheet</button>
+
+<dialog-panel id="sheet-panel">
+	<dialog aria-labelledby="sheet-title">
+		<bottom-sheet>
 			<bottom-sheet-header>
-				<div style="padding-top: 12px">
-					<h4 style="margin: 0; padding: 8px 0">Header</h4>
-				</div>
+				<h2 id="sheet-title">A useful title</h2>
+				<button data-action-hide-dialog aria-label="Close">&times;</button>
 			</bottom-sheet-header>
 
 			<bottom-sheet-content>
-				<ul>
-					<li>Item 1</li>
-					<li>Item 2</li>
-					<li>Item 3</li>
-				</ul>
+				<p>Scrollable sheet content goes here.</p>
 			</bottom-sheet-content>
-
-			<div class="bottom-sheet-button-panel">
-				<button data-action-hide-dialog>Cancel</button>
-				<button>Apply</button>
-			</div>
 		</bottom-sheet>
 	</dialog>
 </dialog-panel>
 
-<script>
-	const button = document.getElementById('show-bottom-sheet-button');
+<script type="module">
+	const trigger = document.querySelector('#open-sheet');
 	const sheet = document.querySelector('bottom-sheet');
 
-	button.addEventListener('click', (e) => sheet.show(e.target));
+	trigger.addEventListener('click', () => sheet.show(trigger));
 </script>
 ```
 
-## How It Works
+Any element with `data-action-hide-dialog` delegates closing to the parent panel.
 
-- The bottom sheet is wrapped in a `<dialog-panel>` and native `<dialog>` element.
-- Clicking the trigger button calls `show(triggerEl)`, which opens the sheet via `dialog-panel`.
-- You can drag the sheet down to close it or click the backdrop overlay.
-- The `hide()` method programmatically closes the bottom sheet.
-- The sheet automatically hides on screens wider than `max-display-width` (if set).
-- Any element with a `data-action-hide-dialog` attribute will close the sheet when clicked.
-- Accessibility (focus trapping, `aria-modal`, escape key) is handled by the native `<dialog>` element.
+## Gestures
 
-## Configuration
+The header is always a drag surface. The content becomes a drag surface only when it starts at `scrollTop === 0` and the first movement is downward; otherwise the browser keeps native vertical scrolling. The generated backdrop also accepts a downward drag or a short tap.
 
-The bottom sheet can be configured using the following attributes:
+A release dismisses the sheet through either rule:
 
-| Attribute           | Description                                                                                                                                                                            | Default         |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| `max-display-width` | Maximum viewport width in pixels at which the bottom sheet is displayed. If the viewport is wider, the sheet will automatically hide. Omit this attribute to show on all screen sizes. | None (no limit) |
+- Downward velocity is greater than `0.5 px/ms`.
+- Downward distance is greater than `100px` and release velocity is greater than `-0.05 px/ms`, preventing dismissal after a meaningful upward reversal.
 
-Example:
+Cancelled gestures always snap back. Upward drags never dismiss and use resistance instead of tracking the pointer one-to-one.
+
+## Morph Integration
+
+Install and load `@magic-spells/morph-engine`, assign one engine instance to the parent panel, and pass the source element to `show()`. `morph-display="flex"` preserves the bottom sheet layout during flight.
 
 ```html
-<!-- Bottom sheet that only shows on mobile devices -->
-<dialog-panel>
-	<dialog>
-		<bottom-sheet max-display-width="600">
-			<!-- content -->
-		</bottom-sheet>
-	</dialog>
-</dialog-panel>
+<button id="sheet-card">Open from this card</button>
 
-<!-- Bottom sheet that shows on all screen sizes -->
-<dialog-panel>
+<dialog-panel id="morph-panel" morph morph-display="flex">
 	<dialog>
 		<bottom-sheet>
-			<!-- content -->
+			<bottom-sheet-header>
+				<h2>Expanded card</h2>
+				<button data-action-hide-dialog aria-label="Close">&times;</button>
+			</bottom-sheet-header>
+			<bottom-sheet-content>
+				<p>The card has become a modal bottom sheet.</p>
+			</bottom-sheet-content>
 		</bottom-sheet>
 	</dialog>
 </dialog-panel>
+
+<script src="./morph-engine.min.js"></script>
+<script type="module">
+	const panel = document.querySelector('#morph-panel');
+	const card = document.querySelector('#sheet-card');
+
+	panel.morphEngine = new MorphEngine.MorphEngine({
+		lockScroll: false,
+		zIndex: 10000000,
+	});
+
+	card.addEventListener('click', () => panel.show(card));
+</script>
 ```
 
-## Customization
+The `morph` marker prevents drag policy from fighting a sheet while the panel state is `showing` or `hiding`.
 
-### Styling
+## Responsive Display Limit
 
-You can style the Bottom Sheet using CSS custom properties:
+`max-display-width` is the largest viewport width, in pixels, where a sheet may open. It also closes an open sheet when a resize crosses the limit.
+
+```html
+<bottom-sheet max-display-width="768">
+	<!-- header and content -->
+</bottom-sheet>
+```
+
+Omit the attribute, remove it, or set the `maxDisplayWidth` property to `Infinity` for no limit.
+
+## CSS Custom Properties
+
+Set these on `:root`, a panel, or another ancestor.
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `--bs-panel-background` | `white` | Sheet background |
+| `--bs-panel-max-height` | `85vh` | Maximum sheet height |
+| `--bs-panel-border-radius` | `25px` | Top corner radius |
+| `--bs-panel-box-shadow` | layered shadow | Sheet elevation |
+| `--bs-handle-color` | `#bbb` | Drag-handle color |
+| `--bs-handle-width` | `50px` | Drag-handle width |
+| `--bs-handle-height` | `5px` | Drag-handle height |
+| `--bs-content-padding` | `20px` | Horizontal header/content inset |
+| `--bs-transition-duration` | `300ms` | Open, close, and snap-back duration |
+| `--bs-transition-timing` | `ease` | Transition timing function |
+| `--bs-overlay-background` | `rgba(0, 0, 0, 0.5)` | Backdrop fill |
+| `--bs-overlay-blur` | `5px` | Backdrop blur |
 
 ```css
 :root {
-	/* Colors */
-	--bs-overlay-background: rgba(0, 0, 0, 0.7); /* Darker overlay */
-	--bs-panel-background: #f8f8f8; /* Light gray panel */
-	--bs-handle-color: #999; /* Darker handle */
-
-	/* Sizing */
-	--bs-panel-max-height: 70vh; /* Shorter panel */
-	--bs-panel-border-radius: 16px; /* Smaller border radius */
-
-	/* Animation */
-	--bs-transition-duration: 250ms; /* Faster animation */
-
-	/* Effects */
-	--bs-overlay-blur: 3px; /* Less blur */
+	--bs-panel-background: #171012;
+	--bs-panel-border-radius: 18px;
+	--bs-transition-duration: 240ms;
+	--bs-overlay-blur: 8px;
 }
 ```
 
-### JavaScript API
+## JavaScript API
 
-#### Methods
+### Methods
 
-- `show(triggerEl)`: Opens the bottom sheet. Pass the trigger element for focus return on close.
-- `hide()`: Closes the bottom sheet.
+| Method | Description |
+| --- | --- |
+| `show(triggerEl)` | Open through the parent panel. The optional trigger is used for focus return. |
+| `hide()` | Clear any gesture transform and close through the parent panel. |
 
-#### Properties
+### Properties
 
-- `maxDisplayWidth`: Get/set the maximum viewport width for display (number or `Infinity`).
-- `panel`: Reference to the parent `<dialog-panel>` element.
-- `dialog`: Reference to the parent `<dialog>` element.
+| Property | Description |
+| --- | --- |
+| `maxDisplayWidth` | Numeric responsive limit or `Infinity` |
+| `panel` | Parent `<dialog-panel>` |
+| `dialog` | Parent `<dialog>` |
+| `header` | Descendant `<bottom-sheet-header>` |
+| `content` | Descendant `<bottom-sheet-content>` |
+| `backdrop` | Generated `<dialog-backdrop>`, when available |
 
-#### Keyboard Support
+## Events
 
-- `Escape` key: Closes the bottom sheet when open (handled by native `<dialog>`).
+Events come from the parent `<dialog-panel>`, bubble, and are composed.
 
-#### Events
+| Event | Cancelable | When it fires |
+| --- | --- | --- |
+| `beforeShow` | Yes | Before opening begins |
+| `shown` | No | After opening completes |
+| `beforeHide` | Yes | Before closing begins |
+| `hidden` | No | After closing completes |
 
-Events are dispatched on the `<dialog-panel>` element. All events bubble and are composed.
+Each event includes the panel detail object, including `detail.state`, `detail.triggerElement`, and `detail.result`.
 
-- `beforeShow`: Fired before opening (cancelable).
-- `shown`: Fired after the open animation completes.
-- `beforeHide`: Fired before closing (cancelable).
-- `hidden`: Fired after the close animation completes.
+```js
+const panel = document.querySelector('#sheet-panel');
 
-All events include `detail.triggerElement`, `detail.result`, and `detail.state`.
-
-```javascript
-const panel = document.getElementById('sheet-dialog');
-
-panel.addEventListener('shown', (e) => {
-	console.log('Bottom sheet opened', e.detail);
-});
-
-panel.addEventListener('hidden', (e) => {
-	console.log('Bottom sheet closed', e.detail);
+panel.addEventListener('shown', (event) => {
+	console.log(event.detail.state);
 });
 ```
 
-#### Touch Gestures
+## Accessibility
 
-- **Header drag**: Always allows dragging the panel down to dismiss.
-- **Backdrop drag**: Always allows dragging the panel down to dismiss.
-- **Content drag**: Allows panel drag when content is scrolled to top and dragging down.
-- **Upward drag**: Applies rubber-band resistance.
-- **Downward drag past threshold**: Dismisses the sheet.
+The parent panel and native `<dialog>` provide modal semantics, focus trapping, focus return, and Escape handling. Give the dialog an accessible name with `aria-labelledby` or `aria-label`, label icon-only close buttons, and keep a visible close action in the header.
 
 ## Browser Support
 
-This component works in all modern browsers that support Web Components and the `<dialog>` element.
+Modern browsers with custom elements, native `<dialog>`, Pointer Events, and `:has()` support.
 
 ## License
 
