@@ -795,6 +795,22 @@
 			}
 
 			/* ---- Sheet interiors ---- */
+			/* The component ships edge-to-edge on purpose — a consumer decides
+			   their own width. This page caps it so the sheets read as sheets on
+			   a desktop monitor rather than a full-width bar. Both selectors are
+			   required: the component's [inset] rule resets max-width to none and
+			   outranks the plain one on specificity, not source order. Centering
+			   is margin-inline, not a transform — the dialog is fixed with
+			   left/right: 0, so once max-width clamps the used width the layout is
+			   over-constrained and the auto margins absorb the slack evenly. Only
+			   the inline longhands, so inset's margin-bottom survives. Needs no
+			   media query: below a 600px viewport the cap is inert on its own. */
+			dialog-panel:has(bottom-sheet) > dialog,
+			dialog-panel:has(bottom-sheet[inset]) > dialog {
+				max-width: 600px;
+				margin-inline: auto;
+			}
+
 			.sheet-header {
 				min-height: 78px;
 				padding-top: 26px;
@@ -833,9 +849,16 @@
 				line-height: 1.7;
 			}
 
-			.sheet-copy p + p,
-			.sheet-copy ul + p,
+			/* Every sheet is a single paragraph now, so p + p and ul + p match
+			   nothing on the page — the cart sheet is the only one that still
+			   sets a paragraph after a sibling block. */
 			.sheet-copy .cart-line + p {
+				margin-top: 1rem;
+			}
+
+			/* The snap sheet's snapTo() buttons are the last thing in it now, and
+			   .controls carries no margin of its own. */
+			.sheet-copy .controls {
 				margin-top: 1rem;
 			}
 
@@ -1084,7 +1107,7 @@
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">3 nested elements</span>
 				</div>
-				<h2>Three layers, and only one of them moves.</h2>
+				<h2>Three nested elements, and only one moves.</h2>
 				<p class="demo-desc">
 					<code>&lt;dialog-panel&gt;</code> owns the modal layer — focus trap, Escape, backdrop,
 					body scroll lock. The native <code>&lt;dialog&gt;</code> is the surface that slides.
@@ -1125,7 +1148,7 @@ sheet.show(trigger)</pre>
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">mid-gesture</span>
 				</div>
-				<h2>The list runs out, and the panel picks it up.</h2>
+				<h2>Scrolling hands off to dragging.</h2>
 				<p class="demo-desc">
 					A downward drag on a list has two plausible readings: scroll it, or move the panel. The
 					sheet re-asks on <strong>every move</strong> rather than deciding once, so scrolling to
@@ -1165,7 +1188,7 @@ drag.claimOffset = deltaY;
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">40 · 70 · 100 dvh</span>
 				</div>
-				<h2>Three resting heights, and the sheet picks one.</h2>
+				<h2>Snap points.</h2>
 				<p class="demo-desc">
 					Give the sheet <code>snap-points="40,70,100"</code> and it stops being a two-state thing.
 					Each number is a percentage of the viewport that becomes the dialog's
@@ -1211,7 +1234,7 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">25 · 55 · 92 dvh</span>
 				</div>
-				<h2>All of it, doing one job.</h2>
+				<h2>A map-style sheet.</h2>
 				<p class="demo-desc">
 					The mechanics above are easier to trust when they're not in isolation. This is the shape
 					every maps app converges on: a sheet that opens at a peek, a search field in the fixed
@@ -1241,7 +1264,7 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">flex-shrink: 0</span>
 				</div>
-				<h2>A floor that never travels.</h2>
+				<h2>A pinned footer.</h2>
 				<p class="demo-desc">
 					Add <code>&lt;bottom-sheet-footer&gt;</code> and the sheet becomes a three-part column.
 					<strong>Header and footer are fixed</strong> — both are <code>flex-shrink: 0</code> — and
@@ -1283,7 +1306,7 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">detached · all corners</span>
 				</div>
-				<h2>Lift it off the edges.</h2>
+				<h2>Inset, detached from the edges.</h2>
 				<p class="demo-desc">
 					Add the <code>inset</code> attribute and the sheet stops being welded to the bottom of the
 					screen: all four corners take <code>--bs-panel-border-radius</code>, and
@@ -1354,7 +1377,7 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">max-display-width 768</span>
 				</div>
-				<h2>Above a certain width, it declines.</h2>
+				<h2>A maximum display width.</h2>
 				<p class="demo-desc">
 					A sheet anchored to the bottom edge stops making sense on a wide screen. Set
 					<code>max-display-width="768"</code> and the component enforces the boundary from both
@@ -1383,7 +1406,7 @@ sheet.maxDisplayWidth = Infinity;</pre>
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">--bs-*</span>
 				</div>
-				<h2>Every hook, on one sheet.</h2>
+				<h2>Theming with custom properties.</h2>
 				<p class="demo-desc">
 					The sliders below aren't a component API — they write plain
 					<code>style.setProperty</code> calls onto the <code>&lt;dialog-panel&gt;</code>, and
@@ -1600,7 +1623,7 @@ panel.style.setProperty(<span class="hl-val">'--bs-panel-border-radius'</span>, 
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">4 events</span>
 				</div>
-				<h2>Every open and close leaves a trace.</h2>
+				<h2>Four lifecycle events.</h2>
 				<p class="demo-desc">
 					Events come from the parent <code>&lt;dialog-panel&gt;</code>, bubble, and are composed,
 					so one listener on the panel — or on <code>document</code> — sees the whole cycle.
@@ -1646,7 +1669,7 @@ panel.addEventListener(<span class="hl-val">'beforeShow'</span>, (event) =&gt; e
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">1 attribute · 14 tokens</span>
 				</div>
-				<h2>The whole surface, on one screen.</h2>
+				<h2>The full reference.</h2>
 				<p class="demo-desc">
 					Four elements, one attribute, fourteen style tokens, two methods, and the panel's four
 					lifecycle events. Everything else is ordinary HTML you write yourself.
@@ -2062,12 +2085,9 @@ sheet.hide();</pre>
 					<bottom-sheet-content>
 						<div class="sheet-copy">
 							<p>
-								This header is the drag surface. Grab it anywhere — the rounded bar, the title, the
-								empty space beside it — and pull down.
-							</p>
-							<p>
-								The content below scrolls on its own once it outgrows the sheet. Escape closes it,
-								the backdrop closes it, and focus returns to the button that opened it.
+								This whole header is the drag surface — grab the bar, the title, the space beside
+								it, and pull down. Escape and the backdrop close it too, and focus goes back to the
+								button that opened it.
 							</p>
 						</div>
 					</bottom-sheet-content>
@@ -2106,7 +2126,6 @@ sheet.hide();</pre>
 								<li>13 · Something left out</li>
 								<li>14 · Back at the beginning</li>
 							</ul>
-							<p>You reached the bottom. Drag down from here and only the list moves.</p>
 						</div>
 					</bottom-sheet-content>
 				</bottom-sheet>
@@ -2188,10 +2207,9 @@ sheet.hide();</pre>
 					<bottom-sheet-content>
 						<div class="sheet-copy">
 							<p>
-								Widen the window past 768px without closing this first. The resize listener notices
-								the boundary and hands the close to the parent panel.
+								Widen the window past 768px without closing this first — the resize listener notices
+								the boundary and closes the sheet for you.
 							</p>
-							<p>On a wider screen, this is where you'd reach for a centered dialog instead.</p>
 						</div>
 					</bottom-sheet-content>
 				</bottom-sheet>
@@ -2210,18 +2228,15 @@ sheet.hide();</pre>
 					<bottom-sheet-content>
 						<div class="sheet-copy">
 							<p>
-								Drag the header slowly and let go — you land on whichever of 40, 70 and 100 was
-								nearest. Flick instead and you step exactly one, however hard you throw it.
+								Drag slowly and let go — you land on whichever of 40, 70 and 100 was nearest. Flick
+								instead and you step exactly one, however hard you throw it. Dragging below 40 is
+								the only way to close this by gesture.
 							</p>
 							<div class="controls">
 								<button class="btn" data-snap="40">40</button>
 								<button class="btn" data-snap="70">70</button>
 								<button class="btn" data-snap="100">100</button>
 							</div>
-							<p>
-								Those buttons call <code>snapTo()</code>. Dragging below 40 is the only way to close
-								this sheet by gesture — from any taller snap a downward flick just steps down.
-							</p>
 						</div>
 					</bottom-sheet-content>
 					<bottom-sheet-footer>
@@ -2282,10 +2297,6 @@ sheet.hide();</pre>
 								All four corners are rounded and there's a gap on three sides. Every gesture works
 								exactly as it does on an edge-anchored sheet — the attribute only touches CSS.
 							</p>
-							<p>
-								Drag it down and watch where it goes: it clears the bottom gap and the safe area
-								rather than stopping short and peeking.
-							</p>
 						</div>
 					</bottom-sheet-content>
 					<bottom-sheet-footer>
@@ -2308,12 +2319,8 @@ sheet.hide();</pre>
 						<div class="sheet-copy">
 							<p>
 								Floating, and snapping at 40 and 97 — nothing in between, so it either peeks or
-								takes the screen. The height drives the snap; the margin and the corrected
-								off-screen transform stay out of its way.
-							</p>
-							<p>
-								Drag below 40 and it dismisses — clearing the bottom gap on the way out, the same as
-								the plain inset sheet.
+								takes the screen. Drag below 40 and it dismisses, clearing the bottom gap on the way
+								out.
 							</p>
 						</div>
 					</bottom-sheet-content>
@@ -2336,13 +2343,9 @@ sheet.hide();</pre>
 					<bottom-sheet-content>
 						<div class="sheet-copy">
 							<p>
-								Set the controls, then open this — a modal <code>&lt;dialog&gt;</code> makes
-								everything outside it inert, so the sliders are genuinely out of reach right now.
-								Close it, turn something, open it again.
-							</p>
-							<p>
-								The transition duration is the one to feel rather than see. Set it long, then drag
-								this sheet halfway down and let go.
+								A modal <code>&lt;dialog&gt;</code> makes everything outside it inert, so the
+								sliders are genuinely out of reach right now. Close this, turn something, open it
+								again.
 							</p>
 						</div>
 					</bottom-sheet-content>
@@ -2363,9 +2366,8 @@ sheet.hide();</pre>
 						<div class="sheet-copy">
 							<p>
 								Two events have already fired. Close this sheet to finish the sequence, then read
-								the log back in the section.
+								the log back in the section — a flick logs the same pair as the button.
 							</p>
-							<p>Closing by flick logs exactly the same pair as closing by button.</p>
 						</div>
 					</bottom-sheet-content>
 				</bottom-sheet>
@@ -2384,12 +2386,9 @@ sheet.hide();</pre>
 					<bottom-sheet-content>
 						<div class="sheet-copy">
 							<p>
-								The public API stays deliberately narrow. Compose the sheet with ordinary HTML,
-								style it through custom properties, and listen on the parent panel.
-							</p>
-							<p>
-								Everything the tables describe is running in this sheet right now — including the
-								handle you're about to grab.
+								The public API stays deliberately narrow: compose with ordinary HTML, style through
+								custom properties, listen on the parent panel. All of it is running in this sheet
+								right now.
 							</p>
 						</div>
 					</bottom-sheet-content>
