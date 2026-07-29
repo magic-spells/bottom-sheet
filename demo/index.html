@@ -1,133 +1,1047 @@
 <!doctype html>
 <html lang="en">
 	<head>
-		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-
-		<title>bottom sheet test</title>
-
-		<link rel="stylesheet" href="./dialog-panel.css" />
-		<link rel="stylesheet" href="./bottom-sheet.min.css" />
-
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Bottom Sheet — @magic-spells</title>
+		<link
+			rel="icon"
+			href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0708'/%3E%3Cpath d='M5 27V14c0-4 3-7 7-7h8c4 0 7 3 7 7v13z' fill='%23e8734a'/%3E%3Cpath d='M12 12h8' stroke='%23f6efe9' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@200;300;400;500&display=swap"
+			rel="stylesheet" />
+		<link rel="stylesheet" href="./vendor/dialog-panel.css" />
+		<link rel="stylesheet" href="./dist/bottom-sheet.css" />
 		<style>
-			body {
-				padding: 0px;
-				margin: 0px;
+			:root {
+				--bg-deep: #0c0708;
+				--bg-card: #150d0f;
+				--bg-card-hover: #1b1114;
+				--border: #302024;
+				--border-accent: #55312d;
+				--ember: #e8734a;
+				--ember-dim: #a94d32;
+				--ember-glow: rgba(232, 115, 74, 0.14);
+				/* Every text token clears 7:1 against the deep background. */
+				--cream: #f6efe9;
+				--cream-dim: #d8cbc3;
+				--text: #e7dcd5;
+				--text-dim: #c1b1aa;
+				--font-display: 'Cormorant Garamond', Georgia, serif;
+				--font-body: 'Outfit', system-ui, sans-serif;
+				--bs-panel-background: #171012;
+				--bs-panel-max-height: 85vh;
+				--bs-panel-border-radius: 25px;
+				--bs-panel-box-shadow: 0 -18px 70px rgba(0, 0, 0, 0.5);
+				--bs-handle-color: #84584d;
+				--bs-handle-width: 50px;
+				--bs-handle-height: 5px;
+				--bs-content-padding: 20px;
+				--bs-transition-duration: 300ms;
+				--bs-transition-timing: ease;
+				--bs-overlay-background: rgba(5, 2, 3, 0.72);
+				--bs-overlay-blur: 6px;
+			}
+
+			* {
 				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
 			}
 
-			dialog-panel:has(bottom-sheet) > dialog {
-				left: 0;
-				right: 0;
-				width: 100%;
-				max-width: 600px;
-				margin: 0 auto;
+			html {
+				background: var(--bg-deep);
+				scroll-behavior: smooth;
 			}
 
-			bottom-sheet-header {
-				font-family: Helvetica, Arial, sans-serif;
-				font-size: 18px;
+			body {
+				min-width: 0;
+				color: var(--text);
+				background: var(--bg-deep);
+				font-family: var(--font-body);
+				font-weight: 300;
+				overflow-x: hidden;
+				-webkit-font-smoothing: antialiased;
 			}
 
-			.bottom-sheet-list {
-				list-style-type: none;
-				margin: 0px;
-				padding: 0px;
-				width: 100%;
+			body::before {
+				content: '';
+				position: fixed;
+				inset: 0;
+				z-index: 99999999;
+				pointer-events: none;
+				opacity: 0.025;
+				background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 			}
 
-			.bottom-sheet-list li {
-				margin-bottom: 16px;
-				padding: 16px;
-				background: lightblue;
-				height: 200px;
-			}
-
-			.bottom-sheet-button-panel {
-				padding: 14px 20px;
+			.hero {
+				position: relative;
+				min-height: 72vh;
+				padding: 5.5rem 1.5rem 3rem;
 				display: flex;
-				gap: 16px;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				text-align: center;
+				overflow: hidden;
 			}
 
-			.bottom-sheet-button-panel button {
-				flex: 1;
-				appearance: none;
-				font-family: Helvetica, Arial, sans-serif;
-				background: white;
-				font-size: 15px;
-				font-weight: 500;
-				border-radius: 5px;
-				padding: 8px;
-				letter-spacing: 0.05em;
-			}
-
-			.bg-image {
-				width: 100%;
-				height: 100vh;
-				object-fit: cover;
-			}
-
-			.test-button {
-				appearance: none;
+			.hero::before {
+				content: '';
 				position: absolute;
-				top: 50%;
+				top: -35%;
 				left: 50%;
-				font-size: 16px;
-				font-weight: 600;
+				width: 1000px;
+				height: 900px;
+				max-width: 130vw;
+				transform: translateX(-50%);
+				background: radial-gradient(ellipse, var(--ember-glow), transparent 68%);
+				pointer-events: none;
+			}
+
+			.hero-badge {
+				position: relative;
+				max-width: 100%;
+				margin-bottom: 2.5rem;
+				padding: 0.45em 1.25em;
+				color: var(--ember);
+				border: 1px solid var(--border-accent);
+				border-radius: 100px;
+				font-size: 1rem;
+				font-weight: 400;
+				letter-spacing: 0.1em;
+				text-decoration: none;
 				text-transform: uppercase;
-				border: 1px solid #8e4a00;
-				border-radius: 5px;
-				transform: translate3d(-50%, -50%, 0);
-				padding: 12px 20px;
-				font-family: Helvetica, arial;
-				font-weight: 500;
-				letter-spacing: 0.6px;
-				background: #c96900;
-				color: white;
-				text-shadow: 0px 1px 5px rgba(0, 0, 0, 0.25);
+			}
+
+			.hero h1 {
+				position: relative;
+				max-width: 11ch;
+				margin-bottom: 1.5rem;
+				color: var(--cream);
+				font-family: var(--font-display);
+				font-size: clamp(3.1rem, 10vw, 7.4rem);
+				font-weight: 300;
+				letter-spacing: -0.025em;
+				line-height: 0.95;
+			}
+
+			.hero h1 em {
+				color: var(--ember);
+				font-weight: 300;
+			}
+
+			.hero-tagline {
+				position: relative;
+				max-width: 590px;
+				font-size: 1.1rem;
+				line-height: 1.72;
+				text-wrap: pretty;
+			}
+
+			.hero-line {
+				position: relative;
+				width: 1px;
+				height: 70px;
+				margin-top: 2.75rem;
+				background: linear-gradient(var(--ember-dim), transparent);
+			}
+
+			.install-banner {
+				display: flex;
+				justify-content: center;
+				margin: 0 auto 4rem;
+				padding: 0 1rem;
+			}
+
+			.install-item {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 0.45rem;
+			}
+
+			.install-label {
+				color: var(--text-dim);
+				font-size: 0.875rem;
+				font-weight: 400;
+				letter-spacing: 0.15em;
+				text-transform: uppercase;
+			}
+
+			.install-value {
+				max-width: calc(100vw - 2rem);
+				padding: 0.6em 1em;
+				color: var(--cream);
+				background: var(--bg-card);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				font-family: 'Courier New', monospace;
+				font-size: clamp(0.75rem, 3.5vw, 0.94rem);
+				overflow-x: auto;
+				user-select: all;
+				cursor: copy;
+			}
+
+			.install-item.copied .install-label,
+			.install-item.copied .install-value {
+				color: var(--ember);
+				border-color: var(--ember);
+			}
+
+			.demos {
+				width: min(1080px, 100%);
+				margin: 0 auto;
+				padding: 1rem 1.25rem 7rem;
+				display: flex;
+				flex-direction: column;
+				gap: 3rem;
+			}
+
+			.demo-section {
+				min-width: 0;
+				padding: 2.75rem;
+				background: var(--bg-card);
+				border: 1px solid var(--border);
+				border-radius: 16px;
+				transition:
+					background 0.3s ease,
+					border-color 0.3s ease;
+			}
+
+			.demo-section:hover {
+				background: var(--bg-card-hover);
+				border-color: var(--border-accent);
+			}
+
+			.demo-index {
+				display: block;
+				margin-bottom: 0.7rem;
+				color: var(--ember);
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				letter-spacing: 0.15em;
+			}
+
+			.demo-section h2 {
+				margin-bottom: 1rem;
+				color: var(--cream);
+				font-family: var(--font-display);
+				font-size: clamp(2rem, 5vw, 3.1rem);
+				font-weight: 400;
+				letter-spacing: -0.01em;
+				line-height: 1.08;
+			}
+
+			.demo-section h2 em {
+				color: var(--ember);
+				font-weight: 300;
+			}
+
+			.demo-desc {
+				max-width: 690px;
+				margin-bottom: 1.6rem;
+				font-size: 1.07rem;
+				line-height: 1.7;
+			}
+
+			.demo-desc code,
+			.sheet-copy code {
+				color: var(--cream);
+				font-family: 'Courier New', monospace;
+				font-size: 0.94em;
+			}
+
+			.stage {
+				min-width: 0;
+				margin-bottom: 1.25rem;
+				padding: 2rem;
+				background:
+					radial-gradient(ellipse at 50% 120%, var(--ember-glow), transparent 58%),
+					linear-gradient(135deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.035));
+				border: 1px solid var(--border);
+				border-radius: 12px;
+			}
+
+			.controls {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.75rem;
+			}
+
+			.btn,
+			.close-btn,
+			.morph-card {
+				color: var(--cream);
+				background: transparent;
+				border: 1px solid var(--border-accent);
+				font: inherit;
+				cursor: pointer;
+			}
+
+			.btn {
+				padding: 0.65em 1.45em;
+				border-radius: 100px;
+				font-size: 0.95rem;
+				font-weight: 400;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+			}
+
+			.btn:hover,
+			.close-btn:hover {
+				color: var(--ember);
+				border-color: var(--ember-dim);
+			}
+
+			.release-readout {
+				min-width: min(100%, 300px);
+				color: var(--cream-dim);
+				font-family: 'Courier New', monospace;
+				font-size: 0.92rem;
+			}
+
+			.morph-card {
+				width: min(100%, 460px);
+				padding: 1.4rem 1.5rem;
+				border-radius: 14px;
+				text-align: left;
+				background: linear-gradient(135deg, rgba(232, 115, 74, 0.14), rgba(255, 255, 255, 0.02));
+			}
+
+			.morph-card strong {
+				display: block;
+				margin-bottom: 0.35rem;
+				color: var(--cream);
+				font-family: var(--font-display);
+				font-size: 1.7rem;
+				font-weight: 400;
+			}
+
+			.code-block {
+				max-width: 100%;
+				margin-top: 1.5rem;
+				padding: 1.25rem 1.4rem;
+				color: var(--text);
+				background: var(--bg-deep);
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				font-family: 'Courier New', monospace;
+				font-size: 0.82rem;
+				line-height: 1.75;
+				overflow-x: auto;
+				white-space: pre;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			.hl-tag {
+				color: var(--ember);
+			}
+
+			.hl-attr {
+				color: #c8a9e5;
+			}
+
+			.hl-val {
+				color: #efb092;
+			}
+
+			.hl-cm {
+				color: var(--text-dim);
+				font-style: italic;
+			}
+
+			.ref-heading {
+				margin: 2rem 0 0.8rem;
+				color: var(--ember);
+				font-size: 0.9rem;
+				font-weight: 400;
+				letter-spacing: 0.15em;
+				text-transform: uppercase;
+			}
+
+			.ref-table {
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				overflow: hidden;
+			}
+
+			.ref-row {
+				display: grid;
+				grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 2fr);
+				gap: 1rem;
+				padding: 0.8rem 1rem;
+				border-top: 1px solid var(--border);
+				line-height: 1.5;
+			}
+
+			.ref-row:first-child {
+				border-top: 0;
+			}
+
+			.ref-head {
+				color: var(--cream-dim);
+				background: rgba(0, 0, 0, 0.24);
+				font-size: 0.8rem;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+			}
+
+			.ref-row code {
+				color: var(--cream);
+				font-family: 'Courier New', monospace;
+				font-size: 0.82rem;
+				overflow-wrap: anywhere;
+			}
+
+			footer {
+				width: min(1080px, calc(100% - 2.5rem));
+				margin: 0 auto;
+				padding: 2rem 1.5rem 4rem;
+				color: var(--text-dim);
+				border-top: 1px solid var(--border);
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				text-align: center;
+			}
+
+			.sheet-header {
+				min-height: 78px;
+				padding-top: 26px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 1rem;
+				border-bottom: 1px solid var(--border);
+			}
+
+			.sheet-header h3 {
+				color: var(--cream);
+				font-family: var(--font-display);
+				font-size: clamp(1.5rem, 6vw, 2.1rem);
+				font-weight: 400;
+			}
+
+			.close-btn {
+				flex: 0 0 auto;
+				width: 38px;
+				height: 38px;
+				border-radius: 50%;
+				font-size: 1.45rem;
+				line-height: 1;
+			}
+
+			.sheet-copy {
+				padding-top: 1.5rem;
+				padding-bottom: 2rem;
+				color: var(--text);
+				font-size: 1.05rem;
+				line-height: 1.7;
+			}
+
+			.sheet-copy p + p,
+			.sheet-copy ul + p {
+				margin-top: 1rem;
+			}
+
+			.sheet-copy ul {
+				padding-left: 1.25rem;
+			}
+
+			.long-list {
+				list-style: none;
+				padding: 0;
+			}
+
+			.long-list li {
+				padding: 1rem 0;
+				border-bottom: 1px solid var(--border);
+			}
+
+			.event-log {
+				height: 150px;
+				margin-top: 1rem;
+				padding: 1rem;
+				color: var(--cream-dim);
+				background: #090506;
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				font-family: 'Courier New', monospace;
+				font-size: 0.86rem;
+				line-height: 1.6;
+				overflow: auto;
+				white-space: pre-wrap;
+			}
+
+			@media (max-width: 640px) {
+				.hero {
+					min-height: 66vh;
+					padding-inline: 1rem;
+				}
+
+				.demos {
+					padding-inline: 0.75rem;
+				}
+
+				.demo-section {
+					padding: 1.75rem 1rem;
+				}
+
+				.stage {
+					padding: 1.25rem 1rem;
+				}
+
+				.ref-row {
+					grid-template-columns: 1fr;
+					gap: 0.3rem;
+				}
+
+				.ref-head {
+					display: none;
+				}
+
+				.code-block {
+					padding-inline: 1rem;
+					font-size: 0.76rem;
+				}
 			}
 		</style>
 	</head>
 	<body>
-		<img class="bg-image" src="./bg-image.jpg" style="width: 100%" />
+		<header class="hero">
+			<a class="hero-badge" href="../">@magic-spells/bottom-sheet</a>
+			<h1>A sheet with <em>momentum</em>.</h1>
+			<p class="hero-tagline">
+				A small custom element for grounded, accessible dialogs—dragged by pointer, aware of scroll,
+				and polished for the edges of a touch screen.
+			</p>
+			<div class="hero-line"></div>
+		</header>
 
-		<button id="show-bottom-sheet-button" class="test-button">Show bottom sheet</button>
+		<div class="install-banner">
+			<div class="install-item">
+				<span class="install-label">Install</span>
+				<code class="install-value"
+					>npm i @magic-spells/bottom-sheet @magic-spells/dialog-panel</code
+				>
+			</div>
+		</div>
 
-		<dialog-panel id="sheet-dialog">
-			<dialog>
-				<bottom-sheet>
-					<bottom-sheet-header>
-						<div style="padding-top: 12px">
-							<h4 style="margin: 0px; padding: 8px 0px">Header</h4>
-						</div>
-					</bottom-sheet-header>
+		<main class="demos">
+			<section class="demo-section">
+				<span class="demo-index">01 · anatomy</span>
+				<h2>Begin with three quiet layers.</h2>
+				<p class="demo-desc">
+					A parent panel owns modal behavior, the native dialog supplies the boundary, and the sheet
+					divides itself into a draggable header and scrollable content.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="basic-panel">Open the basic sheet</button>
+				</div>
+				<pre class="code-block">&lt;<span class="hl-tag">dialog-panel</span>&gt;
+  &lt;<span class="hl-tag">dialog</span>&gt;
+    &lt;<span class="hl-tag">bottom-sheet</span>&gt;
+      &lt;<span class="hl-tag">bottom-sheet-header</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet-header</span>&gt;
+      &lt;<span class="hl-tag">bottom-sheet-content</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet-content</span>&gt;
+    &lt;/<span class="hl-tag">bottom-sheet</span>&gt;
+  &lt;/<span class="hl-tag">dialog</span>&gt;
+&lt;/<span class="hl-tag">dialog-panel</span>&gt;</pre>
+			</section>
 
-					<bottom-sheet-content>
-						<ul class="bottom-sheet-list">
-							<li>Item 1</li>
-							<li>Item 2</li>
-							<li>Item 3</li>
-							<li>Item 4</li>
-							<li>Item 5</li>
-						</ul>
-					</bottom-sheet-content>
+			<section class="demo-section">
+				<span class="demo-index">02 · velocity</span>
+				<h2>Let the release decide.</h2>
+				<p class="demo-desc">
+					Drag down and release. The sheet dismisses when velocity is greater than
+					<code>0.5 px/ms</code>, or after more than <code>100px</code> without an upward reversal.
+					The local readout mirrors those rules at release.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="flick-panel">Try a flick</button>
+					<output class="release-readout" id="release-readout">Waiting for a release…</output>
+				</div>
+				<pre class="code-block"><span class="hl-cm">// Either path dismisses</span>
+velocityY &gt; <span class="hl-val">0.5</span>
+deltaY &gt; <span class="hl-val">100</span> &amp;&amp; velocityY &gt; <span class="hl-val">-0.05</span></pre>
+			</section>
 
-					<div class="bottom-sheet-button-panel">
-						<button data-action-hide-dialog>Clear</button>
-						<button data-action-hide-dialog>Apply</button>
+			<section class="demo-section">
+				<span class="demo-index">03 · scroll</span>
+				<h2>Content keeps the gesture it needs.</h2>
+				<p class="demo-desc">
+					The list scrolls naturally. Only a downward drag that begins while the content is at the
+					top transfers control to the panel; every other gesture remains ordinary scrolling.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="scroll-panel">Open the long list</button>
+				</div>
+				<pre class="code-block"><span class="hl-cm">// Policy inside BottomSheet</span>
+isAtTop &amp;&amp; direction === <span class="hl-val">'down'</span>
+  ? claimPanelDrag()
+  : allowNativeScroll()</pre>
+			</section>
+
+			<section class="demo-section">
+				<span class="demo-index">04 · morph</span>
+				<h2>A card can become the sheet.</h2>
+				<p class="demo-desc">
+					Assign a morph engine to the parent panel and pass the card as the trigger. Gesture policy
+					stays out of the way while the opening or closing flight is active.
+				</p>
+				<div class="stage">
+					<button class="morph-card" id="morph-card">
+						<strong>Field notes</strong>
+						<span>Open this card and watch its bounds settle into the sheet.</span>
+					</button>
+				</div>
+				<pre
+					class="code-block"><span class="hl-tag">const</span> panel = document.querySelector(<span class="hl-val">'#morph-panel'</span>)
+panel.morphEngine = <span class="hl-tag">new</span> MorphEngine.MorphEngine({
+  lockScroll: <span class="hl-val">false</span>,
+  zIndex: <span class="hl-val">10000000</span>,
+})
+card.addEventListener(<span class="hl-val">'click'</span>, () =&gt; panel.show(card))</pre>
+			</section>
+
+			<section class="demo-section">
+				<span class="demo-index">05 · responsive</span>
+				<h2>Give the sheet a horizon.</h2>
+				<p class="demo-desc">
+					This example uses <code>max-display-width="768"</code>. Open it below that width, then
+					resize beyond the boundary and the sheet closes itself.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="width-panel">Open below 768px</button>
+				</div>
+				<pre class="code-block">&lt;<span class="hl-tag">bottom-sheet</span>
+  <span class="hl-attr">max-display-width</span>=<span class="hl-val">"768"</span>&gt;
+  …
+&lt;/<span class="hl-tag">bottom-sheet</span>&gt;</pre>
+			</section>
+
+			<section class="demo-section">
+				<span class="demo-index">06 · lifecycle</span>
+				<h2>Every state leaves a trace.</h2>
+				<p class="demo-desc">
+					The parent panel emits <code>beforeShow</code>, <code>shown</code>,
+					<code>beforeHide</code>, and <code>hidden</code>. Open the sheet, close it, and watch each
+					event arrive with <code>detail.state</code>.
+				</p>
+				<div class="stage">
+					<div class="controls">
+						<button class="btn" data-open="events-panel">Open and log</button>
+						<button class="btn" id="clear-events">Clear log</button>
 					</div>
+					<pre class="event-log" id="event-log" aria-live="polite">No events yet.</pre>
+				</div>
+				<pre
+					class="code-block">panel.addEventListener(<span class="hl-val">'shown'</span>, (event) =&gt; {
+  console.log(event.detail.state)
+})</pre>
+			</section>
+
+			<section class="demo-section">
+				<span class="demo-index">07 · reference</span>
+				<h2>The whole surface, in one place.</h2>
+				<p class="demo-desc">
+					Three elements, one responsive attribute, eleven style tokens, two methods, and the parent
+					panel’s four lifecycle events. The live trigger uses the same canonical anatomy.
+				</p>
+				<div class="stage controls">
+					<button class="btn" data-open="api-panel">Open the reference sheet</button>
+				</div>
+				<pre
+					class="code-block"><span class="hl-tag">const</span> sheet = document.querySelector(<span class="hl-val">'bottom-sheet'</span>)
+sheet.show(trigger)
+sheet.hide()</pre>
+
+				<h3 class="ref-heading">Attributes</h3>
+				<div class="ref-table">
+					<div class="ref-row ref-head">
+						<div>Name</div>
+						<div>Default</div>
+						<div>Description</div>
+					</div>
+					<div class="ref-row">
+						<div><code>max-display-width</code></div>
+						<div>none</div>
+						<div>Largest viewport width, in pixels, where the sheet may open.</div>
+					</div>
+				</div>
+
+				<h3 class="ref-heading">CSS Custom Properties</h3>
+				<div class="ref-table">
+					<div class="ref-row ref-head">
+						<div>Property</div>
+						<div>Default</div>
+						<div>Description</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-background</code></div>
+						<div><code>white</code></div>
+						<div>Panel fill.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-max-height</code></div>
+						<div><code>85vh</code></div>
+						<div>Maximum sheet height.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-border-radius</code></div>
+						<div><code>25px</code></div>
+						<div>Top corner radius.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-box-shadow</code></div>
+						<div>layered shadow</div>
+						<div>Panel elevation.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-handle-color</code></div>
+						<div><code>#bbb</code></div>
+						<div>Handle color.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-handle-width</code></div>
+						<div><code>50px</code></div>
+						<div>Handle width.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-handle-height</code></div>
+						<div><code>5px</code></div>
+						<div>Handle height.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-content-padding</code></div>
+						<div><code>20px</code></div>
+						<div>Horizontal content inset.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-transition-duration</code></div>
+						<div><code>300ms</code></div>
+						<div>Slide duration.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-transition-timing</code></div>
+						<div><code>ease</code></div>
+						<div>Slide timing function.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-overlay-background</code></div>
+						<div><code>rgba(0,0,0,.5)</code></div>
+						<div>Backdrop fill.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-overlay-blur</code></div>
+						<div><code>5px</code></div>
+						<div>Backdrop blur.</div>
+					</div>
+				</div>
+
+				<h3 class="ref-heading">Methods &amp; Events</h3>
+				<div class="ref-table">
+					<div class="ref-row ref-head">
+						<div>Name</div>
+						<div>Type</div>
+						<div>Description</div>
+					</div>
+					<div class="ref-row">
+						<div><code>show(triggerEl)</code></div>
+						<div>method</div>
+						<div>Open and retain the trigger for focus return.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>hide()</code></div>
+						<div>method</div>
+						<div>Close the sheet.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>beforeShow</code></div>
+						<div>event</div>
+						<div>Cancelable; opening is about to begin.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>shown</code></div>
+						<div>event</div>
+						<div>Opening has completed.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>beforeHide</code></div>
+						<div>event</div>
+						<div>Cancelable; closing is about to begin.</div>
+					</div>
+					<div class="ref-row">
+						<div><code>hidden</code></div>
+						<div>event</div>
+						<div>Closing has completed.</div>
+					</div>
+				</div>
+
+				<h3 class="ref-heading">Accessibility</h3>
+				<p class="demo-desc">
+					Modal semantics, focus trapping, focus return, and Escape handling are delegated to the
+					parent panel and its native <code>&lt;dialog&gt;</code>. Close controls use the parent’s
+					<code>data-action-hide-dialog</code> action.
+				</p>
+
+				<h3 class="ref-heading">Browser support</h3>
+				<p class="demo-desc">
+					Modern browsers with custom elements, native dialog, Pointer Events, and
+					<code>:has()</code>.
+				</p>
+			</section>
+		</main>
+
+		<footer>Built for the lower edge · @magic-spells/bottom-sheet · MIT License</footer>
+
+		<dialog-panel id="basic-panel">
+			<dialog aria-labelledby="basic-title">
+				<bottom-sheet>
+					<bottom-sheet-header
+						><div class="sheet-header">
+							<h3 id="basic-title">A simple beginning</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div></bottom-sheet-header
+					>
+					<bottom-sheet-content
+						><div class="sheet-copy">
+							<p>
+								The header is the dedicated drag surface. The content below can scroll independently
+								when it grows.
+							</p>
+							<p>Try the handle with a mouse, pen, or touch.</p>
+						</div></bottom-sheet-content
+					>
 				</bottom-sheet>
 			</dialog>
 		</dialog-panel>
 
+		<dialog-panel id="flick-panel">
+			<dialog aria-labelledby="flick-title">
+				<bottom-sheet>
+					<bottom-sheet-header id="flick-header"
+						><div class="sheet-header">
+							<h3 id="flick-title">Release with intent</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div></bottom-sheet-header
+					>
+					<bottom-sheet-content
+						><div class="sheet-copy">
+							<p>
+								A short, fast downward gesture dismisses without asking for distance. A slower pull
+								needs to travel beyond 100px.
+							</p>
+						</div></bottom-sheet-content
+					>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="scroll-panel">
+			<dialog aria-labelledby="scroll-title">
+				<bottom-sheet>
+					<bottom-sheet-header
+						><div class="sheet-header">
+							<h3 id="scroll-title">A list with room to move</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div></bottom-sheet-header
+					>
+					<bottom-sheet-content
+						><div class="sheet-copy">
+							<ul class="long-list">
+								<li>01 · First light</li>
+								<li>02 · A warm threshold</li>
+								<li>03 · Notes in the margin</li>
+								<li>04 · A longer route home</li>
+								<li>05 · The soft edge</li>
+								<li>06 · Quiet machinery</li>
+								<li>07 · A useful pause</li>
+								<li>08 · Small signals</li>
+								<li>09 · An open window</li>
+								<li>10 · Back at the beginning</li>
+							</ul>
+						</div></bottom-sheet-content
+					>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="morph-panel" morph morph-display="flex">
+			<dialog aria-labelledby="morph-title">
+				<bottom-sheet>
+					<bottom-sheet-header
+						><div class="sheet-header">
+							<h3 id="morph-title">Field notes, expanded</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div></bottom-sheet-header
+					>
+					<bottom-sheet-content
+						><div class="sheet-copy">
+							<p>
+								The source card remains the visual origin. Once the flight settles, this is the same
+								bottom sheet—with the same gestures and modal behavior.
+							</p>
+						</div></bottom-sheet-content
+					>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="width-panel">
+			<dialog aria-labelledby="width-title">
+				<bottom-sheet max-display-width="768">
+					<bottom-sheet-header
+						><div class="sheet-header">
+							<h3 id="width-title">Only under 768px</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div></bottom-sheet-header
+					>
+					<bottom-sheet-content
+						><div class="sheet-copy">
+							<p>
+								Resize the viewport beyond 768px. The component notices the boundary and delegates
+								closing to its parent panel.
+							</p>
+						</div></bottom-sheet-content
+					>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="events-panel">
+			<dialog aria-labelledby="events-title">
+				<bottom-sheet>
+					<bottom-sheet-header
+						><div class="sheet-header">
+							<h3 id="events-title">Lifecycle in motion</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div></bottom-sheet-header
+					>
+					<bottom-sheet-content
+						><div class="sheet-copy">
+							<p>
+								Close this sheet to complete the event sequence, then inspect the log in the
+								section.
+							</p>
+						</div></bottom-sheet-content
+					>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<dialog-panel id="api-panel">
+			<dialog aria-labelledby="api-title">
+				<bottom-sheet>
+					<bottom-sheet-header
+						><div class="sheet-header">
+							<h3 id="api-title">Small by design</h3>
+							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
+						</div></bottom-sheet-header
+					>
+					<bottom-sheet-content
+						><div class="sheet-copy">
+							<p>
+								The public API stays deliberately narrow. Compose the sheet with ordinary HTML,
+								style it through custom properties, and listen on the parent panel.
+							</p>
+						</div></bottom-sheet-content
+					>
+				</bottom-sheet>
+			</dialog>
+		</dialog-panel>
+
+		<script src="./vendor/morph-engine.min.js"></script>
 		<script type="module">
-			import './dialog-panel.esm.js';
-			import './bottom-sheet.esm.js';
+			import './vendor/dialog-panel.esm.js';
+			import './dist/bottom-sheet.esm.js';
 
-			const button = document.getElementById('show-bottom-sheet-button');
-			const sheet = document.getElementById('sheet-dialog');
+			const $ = (selector, root = document) => root.querySelector(selector);
 
-			button.addEventListener('click', (e) => {
-				sheet.show(e.target);
+			const installItem = $('.install-item');
+			const installValue = $('.install-value');
+			const installLabel = $('.install-label');
+			let copiedTimer = 0;
+			installValue.addEventListener('click', async () => {
+				try {
+					await navigator.clipboard.writeText(installValue.textContent.trim());
+					installItem.classList.add('copied');
+					installLabel.textContent = 'Copied';
+					clearTimeout(copiedTimer);
+					copiedTimer = setTimeout(() => {
+						installItem.classList.remove('copied');
+						installLabel.textContent = 'Install';
+					}, 1400);
+				} catch {
+					/* The selected text remains available as the fallback. */
+				}
+			});
+
+			document.addEventListener('click', (event) => {
+				const trigger = event.target.closest('[data-open]');
+				if (!trigger) return;
+				const panel = document.getElementById(trigger.dataset.open);
+				panel.querySelector('bottom-sheet').show(trigger);
+			});
+
+			const morphPanel = $('#morph-panel');
+			const morphCard = $('#morph-card');
+			morphPanel.morphEngine = new MorphEngine.MorphEngine({
+				lockScroll: false,
+				zIndex: 10000000,
+			});
+			morphCard.addEventListener('click', () => morphPanel.show(morphCard));
+
+			const releaseReadout = $('#release-readout');
+			const flickHeader = $('#flick-header');
+			let releaseGesture = null;
+			flickHeader.addEventListener('pointerdown', (event) => {
+				if (!event.isPrimary) return;
+				releaseGesture = {
+					pointerId: event.pointerId,
+					startY: event.clientY,
+					samples: [{ y: event.clientY, t: event.timeStamp }],
+				};
+			});
+			flickHeader.addEventListener('pointermove', (event) => {
+				if (!releaseGesture || event.pointerId !== releaseGesture.pointerId) return;
+				releaseGesture.samples.push({ y: event.clientY, t: event.timeStamp });
+				while (
+					releaseGesture.samples.length > 2 &&
+					releaseGesture.samples[0].t < event.timeStamp - 100
+				) {
+					releaseGesture.samples.shift();
+				}
+			});
+			flickHeader.addEventListener('pointerup', (event) => {
+				if (!releaseGesture || event.pointerId !== releaseGesture.pointerId) return;
+				const first = releaseGesture.samples[0];
+				const last = releaseGesture.samples.at(-1);
+				const velocity = last.t === first.t ? 0 : (last.y - first.y) / (last.t - first.t);
+				const delta = event.clientY - releaseGesture.startY;
+				const outcome =
+					velocity > 0.5 || (delta > 100 && velocity > -0.05) ? 'dismiss' : 'snap back';
+				releaseReadout.textContent = `${outcome} · ${delta.toFixed(0)}px · ${velocity.toFixed(2)} px/ms`;
+				releaseGesture = null;
+			});
+			flickHeader.addEventListener('pointercancel', () => {
+				releaseReadout.textContent = 'cancelled · snap back';
+				releaseGesture = null;
+			});
+
+			const eventsPanel = $('#events-panel');
+			const eventLog = $('#event-log');
+			for (const eventName of ['beforeShow', 'shown', 'beforeHide', 'hidden']) {
+				eventsPanel.addEventListener(eventName, (event) => {
+					if (eventLog.textContent === 'No events yet.') eventLog.textContent = '';
+					eventLog.textContent += `${eventName.padEnd(10)} detail.state=${event.detail.state}\n`;
+					eventLog.scrollTop = eventLog.scrollHeight;
+				});
+			}
+			$('#clear-events').addEventListener('click', () => {
+				eventLog.textContent = 'No events yet.';
 			});
 		</script>
 	</body>
