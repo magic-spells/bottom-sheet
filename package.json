@@ -1,6 +1,6 @@
 {
 	"name": "@magic-spells/bottom-sheet",
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"description": "Bottom sheet web component powered by dialog-panel.",
 	"author": "Cory Schulz",
 	"license": "MIT",
@@ -40,15 +40,16 @@
 		"src/"
 	],
 	"scripts": {
-		"build": "rollup -c",
-		"lint": "eslint src/ rollup.config.mjs",
+		"build": "NODE_ENV=production node scripts/build.mjs",
+		"dev": "NODE_ENV=development node scripts/build.mjs",
+		"serve": "NODE_ENV=development node scripts/build.mjs",
+		"test": "node --test test/",
+		"lint": "eslint src/ scripts/ test/",
 		"format": "prettier --write .",
-		"prepublishOnly": "npm run build",
-		"serve": "rollup -c --watch",
-		"dev": "rollup -c --watch"
+		"prepublishOnly": "npm run build"
 	},
 	"peerDependencies": {
-		"@magic-spells/dialog-panel": "^1.0.0"
+		"@magic-spells/dialog-panel": "^1.2.0"
 	},
 	"publishConfig": {
 		"access": "public",
@@ -61,16 +62,14 @@
 	],
 	"devDependencies": {
 		"@eslint/js": "^9.38.0",
-		"@magic-spells/dialog-panel": "^1.0.0",
-		"@rollup/plugin-node-resolve": "^15.2.3",
-		"@rollup/plugin-terser": "^0.4.4",
-		"baseline-browser-mapping": "^2.9.19",
+		"@magic-spells/dialog-panel": "^1.2.0",
+		"@magic-spells/morph-engine": "^0.1.1",
+		"@magic-spells/vite-plugin-live-reload": "^0.1.0",
 		"eslint": "^9.38.0",
 		"globals": "^15.15.0",
+		"lightningcss": "^1.29.3",
 		"prettier": "^3.3.3",
-		"rollup": "^3.0.0",
-		"rollup-plugin-copy": "^3.5.0",
-		"rollup-plugin-postcss": "^4.0.2",
-		"rollup-plugin-serve": "^1.1.1"
+		"terser": "^5.16.0",
+		"vite": "^8.0.10"
 	}
 }

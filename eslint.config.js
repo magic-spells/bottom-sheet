@@ -24,8 +24,8 @@ export default [
 		},
 	},
 	{
-		// Build config files
-		files: ['rollup.config.mjs'],
+		// Build and test files
+		files: ['scripts/**/*.js', 'scripts/**/*.mjs', 'test/**/*.js'],
 		languageOptions: {
 			ecmaVersion: 2024,
 			sourceType: 'module',
