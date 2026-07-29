@@ -127,6 +127,38 @@ sheet.addEventListener('snapChange', (event) => {
 
 Resting heights are written as `dvh` strings rather than pixels, so rotation and viewport changes re-resolve them with no resize listener involved. `--bs-panel-max-height` is inert once snap points are set — the tallest snap is the cap.
 
+The settle onto a snap runs on a spring rather than a timing function — see [Spring Settling](#spring-settling).
+
+## Spring Settling
+
+Settling onto a snap point runs on a damped spring, seeded with the velocity your finger actually had at the moment of release. A timing function cannot do that: a curve has no idea how hard the sheet was thrown, so a flick and a slow drag would arrive identically. This is on by default and needs no attribute.
+
+It applies **only** to a settle onto a snap. Opening, closing, drag dismissal, and every sheet without `snap-points` stay on plain CSS transitions.
+
+```html
+<!-- default tuning -->
+<bottom-sheet snap-points="40,70,90"></bottom-sheet>
+
+<!-- attraction, friction -->
+<bottom-sheet snap-points="40,70,90" spring="0.08,0.32"></bottom-sheet>
+
+<!-- opt out, settle on --bs-snap-duration and --bs-snap-timing instead -->
+<bottom-sheet snap-points="40,70,90" spring="none"></bottom-sheet>
+```
+
+| Value | Default | Effect |
+| --- | --- | --- |
+| Attraction | `0.065` | Pull toward the snap. Governs arrival time and overshoot, trading almost linearly between them: `0.053` reaches the snap in about 383ms and drifts 0.7% past it, the default in about 267ms and 2.4%, `0.08` in about 200ms and 5% |
+| Friction | `0.3` | Bleeds off the speed attraction builds. Governs how quickly the bounce decays |
+
+Both must be greater than 0 and less than 1. Anything else falls back to its default independently, so `spring="0.08"` retunes attraction and leaves friction alone. The two are not separable in practice — friction is applied every frame and dominates, so raising both together damps *harder*, not less.
+
+Overshoot is a share of the distance travelled, so a longer settle drifts further past the snap. Check that your tallest snap still clears the viewport before reaching for a higher attraction.
+
+Turning the spring off does not flatten the arrival. `--bs-snap-timing` defaults to a curve that overshoots by roughly what the spring produces at its default tuning, so `spring="none"` changes which clock runs the settle more than it changes how the settle reads.
+
+The engine is constructed on the first settle, so a sheet that never snaps never builds one, whatever the attribute says. It ships inside the bundle — there is nothing extra to install.
+
 ## Inset
 
 `inset` detaches the sheet from the screen edges: all four corners take `--bs-panel-border-radius`, and a gap opens on three sides. It is pure CSS — no script reads the attribute.
