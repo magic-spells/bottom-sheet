@@ -31,10 +31,13 @@ dialog-panel:has(bottom-sheet) > dialog {
   flex-direction: column;
   margin: 0;
   transition: none;
-  display: flex;
   position: fixed;
   inset: auto 0 0;
   overflow: hidden;
+}
+
+dialog-panel:has(bottom-sheet) > dialog[open] {
+  display: flex;
 }
 
 dialog-panel:has(bottom-sheet-footer) > dialog {

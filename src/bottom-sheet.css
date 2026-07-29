@@ -24,7 +24,6 @@ dialog-panel:has(bottom-sheet) > dialog {
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
 	position: fixed;
-	display: flex;
 	flex-direction: column;
 	width: 100%;
 	max-width: 100%;
@@ -40,6 +39,12 @@ dialog-panel:has(bottom-sheet) > dialog {
 	box-shadow: var(--bs-panel-box-shadow);
 	will-change: transform;
 	transition: none;
+}
+
+/* Only open dialogs get the flex layout — closed dialogs must keep the
+   UA's display: none, or morph mode (transform: none) would paint them */
+dialog-panel:has(bottom-sheet) > dialog[open] {
+	display: flex;
 }
 
 /* When a footer is present it owns the safe-area padding instead */
