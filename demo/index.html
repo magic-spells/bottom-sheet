@@ -1271,7 +1271,7 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 				<div class="spec">
 					<span class="spec-key">Combined</span>
 					<span class="spec-rule" aria-hidden="true"></span>
-					<span class="spec-val">inset · 40 · 100 dvh</span>
+					<span class="spec-val">inset · 40 · 97 dvh</span>
 				</div>
 				<h2>Floating, and still snapping.</h2>
 				<p class="demo-desc">
@@ -1282,14 +1282,15 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 				<p class="demo-desc">
 					Two snaps, no middle ground — it either peeks or takes the screen. The snap is the sheet's
 					height, not its distance from the top, so with a bottom gap a floating sheet sits that
-					much higher than an edge-anchored one at the same number. At <code>100</code> that pushes
-					its top edge past the viewport and the upper corners round off screen.
+					much higher than an edge-anchored one at the same number. That's why the tall snap is
+					<code>97</code> rather than <code>100</code> — a detached sheet has to leave the gap out
+					of its own height, or its top corners round off screen.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="inset-snap-panel">Open both at once</button>
 				</div>
 				<pre
-					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">inset</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"40,100"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;</pre>
+					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">inset</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"40,97"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;</pre>
 			</section>
 
 			<!-- ---- Display limit ---- -->
@@ -1337,8 +1338,9 @@ sheet.maxDisplayWidth = Infinity;</pre>
 				</p>
 				<p class="demo-desc">
 					The last switches are attributes on the <code>&lt;bottom-sheet&gt;</code> itself, so they
-					toggle rather than dial. The snap switch sets <code>snap-points="95,66,40"</code> —
-					deliberately out of order, because the parser sorts and dedupes.
+					toggle rather than dial. Each snap has its own switch and they're handed over in the order
+					you flipped them — the parser sorts and dedupes, so the sheet always opens at the shortest
+					one that's on. Leave a single snap enabled and it still works.
 				</p>
 				<p class="demo-desc">
 					Set the dials first — an open modal makes everything behind it inert, so these controls
@@ -1486,8 +1488,18 @@ sheet.maxDisplayWidth = Infinity;</pre>
 						<span class="theme-value">off</span>
 					</label>
 					<label class="theme-row">
-						<span class="theme-label">Snap 40 · 66 · 95</span>
-						<input type="checkbox" id="theme-snap" role="switch" />
+						<span class="theme-label">Snap 36</span>
+						<input type="checkbox" role="switch" data-snap-point="36" />
+						<span class="theme-value">off</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Snap 66</span>
+						<input type="checkbox" role="switch" data-snap-point="66" />
+						<span class="theme-value">off</span>
+					</label>
+					<label class="theme-row">
+						<span class="theme-label">Snap 96</span>
+						<input type="checkbox" role="switch" data-snap-point="96" />
 						<span class="theme-value">off</span>
 					</label>
 					<label class="theme-row">
@@ -2135,7 +2147,7 @@ sheet.hide();</pre>
 					<bottom-sheet-content>
 						<div class="sheet-copy">
 							<p>
-								Drag the header slowly and let go — you land on whichever of 40, 70 and 90 was
+								Drag the header slowly and let go — you land on whichever of 40, 70 and 100 was
 								nearest. Flick instead and you step exactly one, however hard you throw it.
 							</p>
 							<div class="controls">
@@ -2222,7 +2234,7 @@ sheet.hide();</pre>
 
 		<dialog-panel id="inset-snap-panel">
 			<dialog aria-labelledby="inset-snap-title">
-				<bottom-sheet inset snap-points="40,100">
+				<bottom-sheet inset snap-points="40,97">
 					<bottom-sheet-header>
 						<div class="sheet-header">
 							<h3 id="inset-snap-title">Both at once</h3>
@@ -2232,17 +2244,18 @@ sheet.hide();</pre>
 					<bottom-sheet-content>
 						<div class="sheet-copy">
 							<p>
-								Floating, and snapping at 35, 65 and 88. The height drives the snap; the margin and
-								the corrected off-screen transform stay out of its way.
+								Floating, and snapping at 40 and 97 — nothing in between, so it either peeks or
+								takes the screen. The height drives the snap; the margin and the corrected
+								off-screen transform stay out of its way.
 							</p>
 							<p>
-								Drag below 35 and it dismisses — clearing the bottom gap on the way out, the same as
+								Drag below 40 and it dismisses — clearing the bottom gap on the way out, the same as
 								the plain inset sheet.
 							</p>
 						</div>
 					</bottom-sheet-content>
 					<bottom-sheet-footer>
-						<span class="cart-total-label">Pinned at 35, 65 and 88 alike</span>
+						<span class="cart-total-label">Pinned at 40 and 97 alike</span>
 					</bottom-sheet-footer>
 				</bottom-sheet>
 			</dialog>
@@ -2453,23 +2466,31 @@ sheet.hide();</pre>
 					: 'off';
 			};
 
-			// Declared out of order on purpose — the parser sorts and dedupes,
-			// so this lands as [40, 66, 95] and the sheet opens at 40
-			const THEME_SNAPS = '95,66,40';
-			const snapInput = $('#theme-snap');
+			// One switch per snap. They are read in DOM order and handed over
+			// unsorted on purpose — the parser sorts and dedupes, so the sheet
+			// always opens at the shortest one that happens to be on.
+			const snapInputs = [...document.querySelectorAll('.theme-grid input[data-snap-point]')];
 
 			const applySnapPoints = () => {
-				if (snapInput.checked) {
-					themeSheet.setAttribute('snap-points', THEME_SNAPS);
+				const active = snapInputs.filter((input) => input.checked);
+
+				for (const input of snapInputs) {
+					input.parentElement.querySelector('.theme-value').textContent = input.checked
+						? 'on'
+						: 'off';
+				}
+
+				if (active.length) {
+					themeSheet.setAttribute(
+						'snap-points',
+						active.map((input) => input.dataset.snapPoint).join(',')
+					);
 				} else {
 					// Clearing snap-points resets the inline height on its own;
 					// drop the reflected snap too so a re-enable starts fresh
 					themeSheet.removeAttribute('snap-points');
 					themeSheet.removeAttribute('snap');
 				}
-				snapInput.parentElement.querySelector('.theme-value').textContent = snapInput.checked
-					? 'on'
-					: 'off';
 			};
 
 			// Spring settle. The attribute carries its own tuning as
@@ -2510,7 +2531,9 @@ sheet.hide();</pre>
 			overlayInput.addEventListener('input', applyOverlay);
 			curveInput.addEventListener('change', applyCurve);
 			insetInput.addEventListener('change', applyInset);
-			snapInput.addEventListener('change', applySnapPoints);
+			for (const input of snapInputs) {
+				input.addEventListener('change', applySnapPoints);
+			}
 
 			$('#theme-reset').addEventListener('click', () => {
 				themePanel.removeAttribute('style');
@@ -2527,7 +2550,7 @@ sheet.hide();</pre>
 				applyCurve();
 				insetInput.checked = false;
 				applyInset();
-				snapInput.checked = false;
+				for (const input of snapInputs) input.checked = false;
 				applySnapPoints();
 				springInput.checked = true;
 				attractionInput.value = attractionInput.defaultValue;
