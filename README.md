@@ -72,12 +72,14 @@ Any element with `data-action-hide-dialog` delegates closing to the parent panel
 
 The header and optional footer are always drag surfaces. The generated backdrop accepts a downward drag or a short tap.
 
-The content is the interesting case. Rather than deciding once at `pointerdown`, the sheet re-asks on every move until the panel claims the gesture, so a single continuous drag can start as a scroll and become a panel drag. The panel claims when:
+The content is the interesting case. Rather than deciding once at `pointerdown`, the sheet re-asks on every move until the panel claims the gesture. The panel claims when:
 
 - the pointer is moving **down** and the content sits at `scrollTop === 0`, or
 - the pointer is moving **up** and the sheet is below its tallest snap point.
 
 That second rule only exists when snap points are declared — without them, an upward drag on content is always an ordinary scroll. Whatever distance the gesture had already travelled is recorded at the moment of the claim and subtracted afterwards, so the panel picks up from where your finger is instead of jumping. Once claimed, the panel keeps the gesture until release.
+
+Re-asking on every move means a mouse or pen can reverse direction mid-gesture and hand the drag to the panel without lifting. **Touch cannot.** The content scrolls natively via `touch-action: pan-y`, and the Pointer Events specification does not let a gesture change owner once the browser has started scrolling with it — the pointer is cancelled and no further moves are delivered. So on a phone, scrolling a list to the top and continuing into a drag takes two gestures: lift, then drag. Supporting it in one would mean taking scrolling away from the browser, which is a worse trade than the extra lift.
 
 A release dismisses a sheet **with no snap points** through either rule:
 

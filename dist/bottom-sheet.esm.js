@@ -370,6 +370,7 @@ var BottomSheet = class extends HTMLElement {
 	#snap = null;
 	#engine = null;
 	#springTarget = null;
+	#reflectingSnap = false;
 	#panelRef = null;
 	#dialogRef = null;
 	#backdropBound = false;
@@ -404,17 +405,18 @@ var BottomSheet = class extends HTMLElement {
 		}
 		if (name === "snap-points") {
 			_.#snapPoints = parseSnapPoints(newValue);
-			_.#applyRestingHeight();
+			_.#supersedeSettle();
 			return;
 		}
 		if (name === "snap") {
 			const parsed = Number(newValue);
 			_.#snap = newValue !== null && Number.isFinite(parsed) ? parsed : null;
-			_.#applyRestingHeight();
+			if (_.#reflectingSnap) _.#applyRestingHeight();
+			else _.#supersedeSettle();
 			return;
 		}
 		if (name === "spring") {
-			_.#stopSpring();
+			_.#supersedeSettle();
 			_.#engine = null;
 		}
 	}
@@ -460,6 +462,23 @@ var BottomSheet = class extends HTMLElement {
 	#stopSpring() {
 		this.#springTarget = null;
 		this.#engine?.stop();
+	}
+	/**
+	* Hands a settle back to the resting snap because external state has moved
+	* out from under it.
+	*
+	* The engine emits `stop` rather than `complete` when it is halted, so
+	* nothing restores the height on its own — stopping alone stranded the sheet
+	* at whatever pixel the last frame happened to write, with `snap` reporting
+	* a value the sheet was not at. Finishing on the CSS clock keeps the
+	* interruption visible rather than teleporting.
+	*/
+	#supersedeSettle() {
+		const _ = this;
+		const wasSettling = _.#springTarget !== null;
+		_.#stopSpring();
+		if (wasSettling) _.dialog?.classList.add("transitioning", "snapping");
+		_.#applyRestingHeight();
 	}
 	/**
 	* Get the maximum display width
@@ -606,15 +625,32 @@ var BottomSheet = class extends HTMLElement {
 		_.panel?.show(triggerEl);
 	}
 	/**
-	* Hides the bottom sheet via dialog-panel
+	* Hides the bottom sheet via dialog-panel.
+	*
+	* The panel is asked first, because it can refuse — a `beforeHide` handler
+	* may cancel, and it also rejects a close that arrives while the sheet is
+	* still opening. Tearing the settle down before asking left a refused close
+	* with a dead spring and the drag's inline pixels still on the dialog, so
+	* the sheet stayed frozen wherever the last frame had painted it.
+	*
+	* @returns {boolean} False if the panel refused the close
 	*/
 	hide() {
-		this.#stopSpring();
-		if (this.dialog) {
-			this.dialog.style.transform = "";
-			this.dialog.classList.remove("snapping");
+		const _ = this;
+		if (_.panel?.hide() === false) {
+			if (_.dialog) {
+				_.dialog.classList.add("transitioning");
+				_.dialog.style.transform = "";
+			}
+			if (_.#springTarget === null) _.#applyRestingHeight();
+			return false;
 		}
-		this.panel?.hide();
+		_.#stopSpring();
+		if (_.dialog) {
+			_.dialog.style.transform = "";
+			_.dialog.classList.remove("snapping");
+		}
+		return true;
 	}
 	connectedCallback() {
 		const _ = this;
@@ -782,7 +818,7 @@ var BottomSheet = class extends HTMLElement {
 		const drag = _.#drag;
 		if (!drag.active) return;
 		_.#drag = { active: false };
-		if (surface === "backdrop" && Math.abs(deltaY) < 10 && duration < 300) {
+		if (surface === "backdrop" && !cancelled && Math.abs(deltaY) < 10 && duration < 300) {
 			_.hide();
 			return;
 		}
@@ -814,7 +850,9 @@ var BottomSheet = class extends HTMLElement {
 			return;
 		}
 		if (drag.belowLowest > 0) {
-			if (velocityY > _.#flickVelocity || drag.belowLowest > _.#dragThreshold) _.hide();
+			const flick = velocityY > _.#flickVelocity;
+			const pastThreshold = drag.belowLowest > _.#dragThreshold && velocityY > -.05;
+			if (flick || pastThreshold) _.hide();
 			else _.#commitSnap(_.#snapPoints[0], velocityY);
 			return;
 		}
@@ -854,7 +892,9 @@ var BottomSheet = class extends HTMLElement {
 			dialog.style.height = `${value}dvh`;
 		}
 		_.#snap = value;
+		_.#reflectingSnap = true;
 		_.setAttribute("snap", value);
+		_.#reflectingSnap = false;
 		if (from !== value) _.dispatchEvent(new CustomEvent("snapChange", {
 			bubbles: true,
 			detail: {

@@ -5,14 +5,13 @@
 	"author": "Cory Schulz",
 	"license": "MIT",
 	"type": "module",
-	"main": "dist/bottom-sheet.cjs.js",
+	"main": "dist/bottom-sheet.esm.js",
 	"module": "dist/bottom-sheet.esm.js",
 	"unpkg": "dist/bottom-sheet.min.js",
 	"style": "dist/bottom-sheet.min.css",
 	"exports": {
 		".": {
 			"import": "./dist/bottom-sheet.esm.js",
-			"require": "./dist/bottom-sheet.cjs.js",
 			"default": "./dist/bottom-sheet.esm.js"
 		},
 		"./css": "./dist/bottom-sheet.css",

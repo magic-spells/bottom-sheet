@@ -67,6 +67,9 @@ class BottomSheet extends HTMLElement {
 	// construction, so a sheet that never snaps never makes one.
 	#engine = null;
 	#springTarget = null;
+	// Raised only while #commitSnap reflects its own destination, so that write
+	// is not mistaken for an author retargeting the sheet mid-settle.
+	#reflectingSnap = false;
 
 	// cached references for reliable cleanup in disconnectedCallback
 	#panelRef = null;
@@ -103,14 +106,21 @@ class BottomSheet extends HTMLElement {
 
 		if (name === 'snap-points') {
 			_.#snapPoints = parseSnapPoints(newValue);
-			_.#applyRestingHeight();
+			// Never written internally, so any change here is the author's and
+			// supersedes a settle — whose destination may not even be declared
+			// any more.
+			_.#supersedeSettle();
 			return;
 		}
 
 		if (name === 'snap') {
 			const parsed = Number(newValue);
 			_.#snap = newValue !== null && Number.isFinite(parsed) ? parsed : null;
-			_.#applyRestingHeight();
+			// #commitSnap reflects the destination of the settle it has just
+			// started, and must not cancel it. Every other write is an author
+			// retargeting the sheet, which wins over whatever is in flight.
+			if (_.#reflectingSnap) _.#applyRestingHeight();
+			else _.#supersedeSettle();
 			return;
 		}
 
@@ -118,7 +128,7 @@ class BottomSheet extends HTMLElement {
 			// Drop the engine rather than rebuilding here. The next settle
 			// reconstructs it with the new tuning, which keeps this callback out
 			// of the business of knowing whether one is currently running.
-			_.#stopSpring();
+			_.#supersedeSettle();
 			_.#engine = null;
 		}
 	}
@@ -186,6 +196,25 @@ class BottomSheet extends HTMLElement {
 	#stopSpring() {
 		this.#springTarget = null;
 		this.#engine?.stop();
+	}
+
+	/**
+	 * Hands a settle back to the resting snap because external state has moved
+	 * out from under it.
+	 *
+	 * The engine emits `stop` rather than `complete` when it is halted, so
+	 * nothing restores the height on its own — stopping alone stranded the sheet
+	 * at whatever pixel the last frame happened to write, with `snap` reporting
+	 * a value the sheet was not at. Finishing on the CSS clock keeps the
+	 * interruption visible rather than teleporting.
+	 */
+	#supersedeSettle() {
+		const _ = this;
+		const wasSettling = _.#springTarget !== null;
+
+		_.#stopSpring();
+		if (wasSettling) _.dialog?.classList.add('transitioning', 'snapping');
+		_.#applyRestingHeight();
 	}
 
 	/**
@@ -373,20 +402,42 @@ class BottomSheet extends HTMLElement {
 	}
 
 	/**
-	 * Hides the bottom sheet via dialog-panel
+	 * Hides the bottom sheet via dialog-panel.
+	 *
+	 * The panel is asked first, because it can refuse — a `beforeHide` handler
+	 * may cancel, and it also rejects a close that arrives while the sheet is
+	 * still opening. Tearing the settle down before asking left a refused close
+	 * with a dead spring and the drag's inline pixels still on the dialog, so
+	 * the sheet stayed frozen wherever the last frame had painted it.
+	 *
+	 * @returns {boolean} False if the panel refused the close
 	 */
 	hide() {
+		const _ = this;
+		const accepted = _.panel?.hide();
+
+		if (accepted === false) {
+			// Refused. Undo the gesture rather than the settle: a spring that is
+			// still running owns the height and will land on its own.
+			if (_.dialog) {
+				_.dialog.classList.add('transitioning');
+				_.dialog.style.transform = '';
+			}
+			if (_.#springTarget === null) _.#applyRestingHeight();
+			return false;
+		}
+
 		// A close is a state transition, not a settle — let go of the height
-		this.#stopSpring();
+		_.#stopSpring();
 		// Clear any inline transform from drag gestures so CSS state transitions work.
 		// The inline height stays put — the hiding transform is a percentage of it.
-		if (this.dialog) {
-			this.dialog.style.transform = '';
+		if (_.dialog) {
+			_.dialog.style.transform = '';
 			// A dismiss is a close, not a settle. Left on, this would outrank
 			// the hiding rule and close the sheet at the snap duration.
-			this.dialog.classList.remove('snapping');
+			_.dialog.classList.remove('snapping');
 		}
-		this.panel?.hide();
+		return true;
 	}
 
 	connectedCallback() {
@@ -653,7 +704,10 @@ class BottomSheet extends HTMLElement {
 		if (!drag.active) return;
 		_.#drag = { active: false };
 
-		if (surface === 'backdrop' && Math.abs(deltaY) < 10 && duration < 300) {
+		// A cancelled pointer is not a tap. The browser takes the gesture over
+		// without the user ever having lifted, and every other release path here
+		// treats that as "put it back", not "act on it".
+		if (surface === 'backdrop' && !cancelled && Math.abs(deltaY) < 10 && duration < 300) {
 			_.hide();
 			return;
 		}
@@ -701,7 +755,15 @@ class BottomSheet extends HTMLElement {
 
 		// Dragged below the shortest snap, so the binary dismissal rules apply
 		if (drag.belowLowest > 0) {
-			if (velocityY > _.#flickVelocity || drag.belowLowest > _.#dragThreshold) {
+			const flick = velocityY > _.#flickVelocity;
+			// Mirrors the binary path exactly: a distance dismissal must not fire
+			// when the finger was already travelling back up at release. Without
+			// this, pulling well below the shortest snap and then reversing still
+			// closes the sheet, because belowLowest is a position rather than an
+			// intent and can stay past the threshold through the whole reversal.
+			const pastThreshold = drag.belowLowest > _.#dragThreshold && velocityY > -0.05;
+
+			if (flick || pastThreshold) {
 				_.hide();
 			} else {
 				_.#commitSnap(_.#snapPoints[0], velocityY);
@@ -763,7 +825,11 @@ class BottomSheet extends HTMLElement {
 		}
 
 		_.#snap = value;
+		// Flagged so the reflection is not read back as an author retargeting
+		// the sheet — that would supersede the settle started three lines up.
+		_.#reflectingSnap = true;
 		_.setAttribute('snap', value);
+		_.#reflectingSnap = false;
 
 		if (from !== value) {
 			_.dispatchEvent(

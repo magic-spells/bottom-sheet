@@ -71,47 +71,17 @@ function esmConfig({ emitCss = false } = {}) {
 	});
 }
 
-function umdConfig() {
+// The package ships ES modules only. UMD and CommonJS were dropped once the
+// browserslist floor cleared `<script type="module">` everywhere: a CommonJS
+// body cannot live under `"type": "module"` without a `.cjs` extension anyway,
+// and the CDN case is served by the minified ESM below.
+function esmMinConfig({ emitCss = false } = {}) {
 	return sharedBuild({
 		build: {
 			lib: {
 				entry: 'src/bottom-sheet.js',
-				name: 'BottomSheet',
-				fileName: () => 'bottom-sheet.js',
-				formats: ['umd'],
-			},
-			minify: false,
-			rolldownOptions: {
-				output: { exports: 'named' },
-			},
-		},
-	});
-}
-
-function cjsConfig() {
-	return sharedBuild({
-		build: {
-			lib: {
-				entry: 'src/bottom-sheet.js',
-				fileName: () => 'bottom-sheet.cjs.js',
-				formats: ['cjs'],
-			},
-			minify: false,
-			rolldownOptions: {
-				output: { exports: 'named' },
-			},
-		},
-	});
-}
-
-function umdMinConfig({ emitCss = false } = {}) {
-	return sharedBuild({
-		build: {
-			lib: {
-				entry: 'src/bottom-sheet.js',
-				name: 'BottomSheet',
 				fileName: () => 'bottom-sheet.min.js',
-				formats: ['umd'],
+				formats: ['es'],
 				...(emitCss ? { cssFileName: 'bottom-sheet.min' } : {}),
 			},
 			minify: 'terser',
@@ -137,8 +107,8 @@ async function main() {
 	await syncVendor();
 
 	const configs = isDev
-		? [esmConfig({ emitCss: true }), umdConfig()]
-		: [esmConfig({ emitCss: true }), umdMinConfig({ emitCss: true }), umdConfig(), cjsConfig()];
+		? [esmConfig({ emitCss: true })]
+		: [esmConfig({ emitCss: true }), esmMinConfig({ emitCss: true })];
 
 	if (isDev) {
 		for (const config of configs) {
