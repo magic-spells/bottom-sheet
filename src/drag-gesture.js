@@ -20,8 +20,27 @@ class VelocityTracker {
 		const samples = this.#samples;
 		if (samples.length < 2) return 0;
 
-		const first = samples[0];
 		const last = samples[samples.length - 1];
+
+		// Walk back from the newest sample and stop at the first reversal.
+		// Averaging the whole window instead would keep reporting the direction
+		// a gesture came from: pull a fast upward drag back down and lift, and
+		// the window still reads upward, so the sheet leaves in the opposite
+		// direction to the finger that released it. Zero-length steps are
+		// skipped rather than treated as a turn — a slow drag quantises to
+		// them constantly.
+		let direction = 0;
+		let start = samples.length - 1;
+		while (start > 0) {
+			const step = Math.sign(samples[start].y - samples[start - 1].y);
+			if (step !== 0) {
+				if (direction === 0) direction = step;
+				else if (step !== direction) break;
+			}
+			start--;
+		}
+
+		const first = samples[start];
 		const deltaTime = last.t - first.t;
 
 		return deltaTime === 0 ? 0 : (last.y - first.y) / deltaTime;
@@ -124,6 +143,10 @@ class DragGesture {
 
 		_.#active = false;
 		_.#captured = false;
+		// The release is itself a sample. A stationary pointer fires no
+		// pointermove, so without this the window never ages past the last
+		// motion and a finger that stopped dead still reports a full flick.
+		_.#tracker.add(event.clientY, event.timeStamp);
 		_.#onEnd?.({
 			event,
 			deltaY: event.clientY - _.#startY,

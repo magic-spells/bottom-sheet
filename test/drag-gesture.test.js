@@ -53,6 +53,21 @@ test('VelocityTracker evicts stale samples after a pause', () => {
 	assert.equal(tracker.velocity, 10 / 150);
 });
 
+test('VelocityTracker reports the direction of travel after a reversal', () => {
+	const tracker = new VelocityTracker(100);
+	// A fast run upward, then the finger turns around and heads back down
+	tracker.add(600, 0);
+	tracker.add(515, 32);
+	tracker.add(490, 48);
+	tracker.add(520, 80);
+	tracker.add(545, 96);
+
+	// Measured oldest-to-newest this window still averages to -0.57, which
+	// would send a released sheet the opposite way to the finger holding it
+	assert.ok(tracker.velocity > 0, 'must report where the pointer is going, not where it came from');
+	assert.equal(tracker.velocity, 55 / 48);
+});
+
 test('VelocityTracker returns zero with fewer than two samples', () => {
 	const tracker = new VelocityTracker();
 
@@ -87,7 +102,10 @@ test('DragGesture reports a complete start, move, and end flow', () => {
 	assert.equal(calls[2][0], 'end');
 	assert.equal(calls[2][1].deltaY, 110);
 	assert.equal(calls[2][1].duration, 120);
-	assert.ok(calls[2][1].velocityY > 0.9);
+	// This drag decelerates into its release — 100px over the first 100ms, then
+	// only 10px over the final 20ms. The end velocity describes the release,
+	// not the whole gesture, so it reads 0.5 rather than the 1.0 average.
+	assert.equal(calls[2][1].velocityY, 0.5);
 	assert.equal(calls[2][1].cancelled, false);
 
 	gesture.destroy();
@@ -200,6 +218,51 @@ test('DragGesture ignores non-primary and foreign pointers', () => {
 
 	el.fire('pointerup', ev());
 	assert.deepEqual(calls, ['start', 'end']);
+
+	gesture.destroy();
+});
+
+test('DragGesture reports no velocity when the pointer is held still before release', () => {
+	const el = new StubElement();
+	let endInfo;
+	const gesture = new DragGesture(el, {
+		onEnd: (info) => {
+			endInfo = info;
+		},
+	});
+
+	el.fire('pointerdown', ev({ clientY: 500, timeStamp: 0 }));
+	el.fire('pointermove', ev({ clientY: 480, timeStamp: 16 }));
+	el.fire('pointermove', ev({ clientY: 450, timeStamp: 32 }));
+	el.fire('pointermove', ev({ clientY: 430, timeStamp: 48 }));
+	// The finger parks for a quarter second before lifting. A stationary
+	// pointer fires no pointermove, so the release is the only thing that can
+	// retire those samples — without it the tracker still reports the flick.
+	el.fire('pointerup', ev({ clientY: 430, timeStamp: 298 }));
+
+	assert.equal(endInfo.velocityY, 0);
+
+	gesture.destroy();
+});
+
+test('DragGesture reports the release direction after a mid-gesture reversal', () => {
+	const el = new StubElement();
+	let endInfo;
+	const gesture = new DragGesture(el, {
+		onEnd: (info) => {
+			endInfo = info;
+		},
+	});
+
+	el.fire('pointerdown', ev({ clientY: 600, timeStamp: 0 }));
+	el.fire('pointermove', ev({ clientY: 515, timeStamp: 32 }));
+	el.fire('pointermove', ev({ clientY: 490, timeStamp: 48 }));
+	// Pulled back down before lifting
+	el.fire('pointermove', ev({ clientY: 520, timeStamp: 80 }));
+	el.fire('pointermove', ev({ clientY: 545, timeStamp: 96 }));
+	el.fire('pointerup', ev({ clientY: 545, timeStamp: 100 }));
+
+	assert.ok(endInfo.velocityY > 0, 'released heading downward, so velocity must be downward');
 
 	gesture.destroy();
 });

@@ -392,6 +392,21 @@ class BottomSheet extends HTMLElement {
 			return;
 		}
 
+		const dialog = _.dialog;
+		// Measured while the transition is still armed. A settling sheet already
+		// carries its destination in the inline height and is only painted part
+		// way there, so this has to be read before that transition is dropped.
+		const startHeight = dialog?.getBoundingClientRect().height ?? 0;
+
+		if (dialog && _.#snapPoints.length) {
+			// Pin the height the sheet is actually painted at. Dropping
+			// `transitioning` below cancels a running settle, which renders the
+			// inline destination immediately — so grabbing a moving sheet would
+			// otherwise jump it to the target snap and then back to the finger
+			// on the first move.
+			dialog.style.height = `${startHeight}px`;
+		}
+
 		_.#drag = {
 			active: true,
 			claimed: false,
@@ -399,10 +414,10 @@ class BottomSheet extends HTMLElement {
 			// Distance already travelled when the panel took the gesture over, so
 			// a mid-gesture handoff starts from zero instead of jumping.
 			claimOffset: 0,
-			startHeight: _.dialog?.getBoundingClientRect().height ?? 0,
+			startHeight,
 			belowLowest: 0,
 		};
-		_.dialog?.classList.remove('transitioning');
+		dialog?.classList.remove('transitioning');
 	}
 
 	/**
@@ -526,8 +541,15 @@ class BottomSheet extends HTMLElement {
 			return;
 		}
 
-		if (!drag.claimed) return;
 		_.dialog?.classList.add('transitioning');
+
+		if (!drag.claimed) {
+			// A press that never became a drag still pinned the height, so hand
+			// it back to the resting snap. That both restores dvh and lets a
+			// settle the press interrupted finish on its own.
+			_.#applyRestingHeight();
+			return;
+		}
 
 		if (_.#snapPoints.length) {
 			_.#releaseToSnap(drag, velocityY, cancelled);

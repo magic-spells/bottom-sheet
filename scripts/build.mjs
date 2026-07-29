@@ -150,7 +150,10 @@ async function main() {
 		const server = await createServer({
 			configFile: false,
 			root: 'demo',
-			server: { port: 3080, open: true, strictPort: false },
+			// Bound to every interface so the demo can be driven from a real
+			// phone — touch gesture behaviour cannot be judged from a desktop
+			// pointer. printUrls() then lists the LAN address to open.
+			server: { port: 3080, open: true, strictPort: false, host: true },
 			plugins: [liveReload('demo/dist')],
 		});
 		await server.listen();

@@ -21,8 +21,18 @@
 		get velocity() {
 			const samples = this.#samples;
 			if (samples.length < 2) return 0;
-			const first = samples[0];
 			const last = samples[samples.length - 1];
+			let direction = 0;
+			let start = samples.length - 1;
+			while (start > 0) {
+				const step = Math.sign(samples[start].y - samples[start - 1].y);
+				if (step !== 0) {
+					if (direction === 0) direction = step;
+					else if (step !== direction) break;
+				}
+				start--;
+			}
+			const first = samples[start];
 			const deltaTime = last.t - first.t;
 			return deltaTime === 0 ? 0 : (last.y - first.y) / deltaTime;
 		}
@@ -98,6 +108,7 @@
 			if (!_.#active || event.pointerId !== _.#pointerId) return;
 			_.#active = false;
 			_.#captured = false;
+			_.#tracker.add(event.clientY, event.timeStamp);
 			_.#onEnd?.({
 				event,
 				deltaY: event.clientY - _.#startY,
@@ -449,15 +460,18 @@
 			const _ = this;
 			const state = _.panel?.getAttribute("state");
 			if (_.panel?.hasAttribute("morph") && (state === "showing" || state === "hiding")) return;
+			const dialog = _.dialog;
+			const startHeight = dialog?.getBoundingClientRect().height ?? 0;
+			if (dialog && _.#snapPoints.length) dialog.style.height = `${startHeight}px`;
 			_.#drag = {
 				active: true,
 				claimed: false,
 				surface,
 				claimOffset: 0,
-				startHeight: _.dialog?.getBoundingClientRect().height ?? 0,
+				startHeight,
 				belowLowest: 0
 			};
-			_.dialog?.classList.remove("transitioning");
+			dialog?.classList.remove("transitioning");
 		}
 		/**
 		* Applies resistance to a drag value to create a rubber-band effect
@@ -548,8 +562,11 @@
 				_.hide();
 				return;
 			}
-			if (!drag.claimed) return;
 			_.dialog?.classList.add("transitioning");
+			if (!drag.claimed) {
+				_.#applyRestingHeight();
+				return;
+			}
 			if (_.#snapPoints.length) {
 				_.#releaseToSnap(drag, velocityY, cancelled);
 				return;
