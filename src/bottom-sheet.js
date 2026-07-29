@@ -135,6 +135,14 @@ class BottomSheet extends HTMLElement {
 	}
 
 	/**
+	 * Get the footer element
+	 * @returns {HTMLElement|null}
+	 */
+	get footer() {
+		return this.querySelector('bottom-sheet-footer');
+	}
+
+	/**
 	 * Get the backdrop element from dialog-panel
 	 * @returns {HTMLElement|null}
 	 */
@@ -198,6 +206,10 @@ class BottomSheet extends HTMLElement {
 
 		if (_.header) {
 			_.#gestures.push(new DragGesture(_.header, _.#surfaceCallbacks('header')));
+		}
+
+		if (_.footer) {
+			_.#gestures.push(new DragGesture(_.footer, _.#surfaceCallbacks('footer')));
 		}
 
 		if (_.content) {
@@ -354,6 +366,12 @@ class BottomSheetHeader extends HTMLElement {
 	}
 }
 
+class BottomSheetFooter extends HTMLElement {
+	constructor() {
+		super();
+	}
+}
+
 if (!customElements.get('bottom-sheet')) {
 	customElements.define('bottom-sheet', BottomSheet);
 }
@@ -363,5 +381,8 @@ if (!customElements.get('bottom-sheet-content')) {
 if (!customElements.get('bottom-sheet-header')) {
 	customElements.define('bottom-sheet-header', BottomSheetHeader);
 }
+if (!customElements.get('bottom-sheet-footer')) {
+	customElements.define('bottom-sheet-footer', BottomSheetFooter);
+}
 
-export { BottomSheet, BottomSheetContent, BottomSheetHeader };
+export { BottomSheet, BottomSheetContent, BottomSheetHeader, BottomSheetFooter };

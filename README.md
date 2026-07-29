@@ -32,7 +32,7 @@ import '@magic-spells/bottom-sheet/css';
 
 ## Usage
 
-Keep the canonical structure intact: `dialog-panel` owns the native dialog, and `bottom-sheet` contains a header plus content.
+Keep the canonical structure intact: `dialog-panel` owns the native dialog, and `bottom-sheet` contains a header, content, and an optional footer.
 
 ```html
 <button id="open-sheet">Open sheet</button>
@@ -48,6 +48,10 @@ Keep the canonical structure intact: `dialog-panel` owns the native dialog, and 
 			<bottom-sheet-content>
 				<p>Scrollable sheet content goes here.</p>
 			</bottom-sheet-content>
+
+			<bottom-sheet-footer>
+				<button>Primary action</button>
+			</bottom-sheet-footer>
 		</bottom-sheet>
 	</dialog>
 </dialog-panel>
@@ -64,7 +68,7 @@ Any element with `data-action-hide-dialog` delegates closing to the parent panel
 
 ## Gestures
 
-The header is always a drag surface. The content becomes a drag surface only when it starts at `scrollTop === 0` and the first movement is downward; otherwise the browser keeps native vertical scrolling. The generated backdrop also accepts a downward drag or a short tap.
+The header and optional footer are always drag surfaces. The content becomes a drag surface only when it starts at `scrollTop === 0` and the first movement is downward; otherwise the browser keeps native vertical scrolling. The generated backdrop also accepts a downward drag or a short tap.
 
 A release dismisses the sheet through either rule:
 
@@ -136,6 +140,8 @@ Set these on `:root`, a panel, or another ancestor.
 | `--bs-handle-width` | `50px` | Drag-handle width |
 | `--bs-handle-height` | `5px` | Drag-handle height |
 | `--bs-content-padding` | `20px` | Horizontal header/content inset |
+| `--bs-footer-padding` | `--bs-content-padding` | Footer inset (safe-area padding is added below) |
+| `--bs-footer-background` | `transparent` | Footer background |
 | `--bs-transition-duration` | `300ms` | Open, close, and snap-back duration |
 | `--bs-transition-timing` | `ease` | Transition timing function |
 | `--bs-overlay-background` | `rgba(0, 0, 0, 0.5)` | Backdrop fill |
@@ -168,6 +174,7 @@ Set these on `:root`, a panel, or another ancestor.
 | `dialog` | Parent `<dialog>` |
 | `header` | Descendant `<bottom-sheet-header>` |
 | `content` | Descendant `<bottom-sheet-content>` |
+| `footer` | Descendant `<bottom-sheet-footer>`, when present |
 | `backdrop` | Generated `<dialog-backdrop>`, when available |
 
 ## Events
