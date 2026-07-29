@@ -442,7 +442,6 @@ var BottomSheet = class extends HTMLElement {
 		};
 		if (Number.isFinite(attraction) && attraction > 0 && attraction < 1) options.attraction = attraction;
 		if (Number.isFinite(friction) && friction > 0 && friction < 1) options.friction = friction;
-		_.#stopSpring();
 		_.#engine = new b(options);
 		_.#engine.on("change", ({ position }) => {
 			const dialog = _.dialog;
@@ -842,11 +841,13 @@ var BottomSheet = class extends HTMLElement {
 		const dialog = _.dialog;
 		if (dialog && _.#springEnabled) {
 			const startPx = dialog.getBoundingClientRect().height;
+			const engine = _.#ensureEngine();
 			dialog.classList.remove("transitioning", "snapping");
 			dialog.style.transform = "";
-			_.#springTarget = value / 100 * window.innerHeight;
+			const targetPx = value / 100 * window.innerHeight;
+			_.#springTarget = targetPx;
 			const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
-			_.#ensureEngine().animateTo(startPx, _.#springTarget, seed);
+			engine.animateTo(startPx, targetPx, seed);
 		} else if (dialog) {
 			dialog.classList.add("snapping");
 			dialog.style.transform = "";

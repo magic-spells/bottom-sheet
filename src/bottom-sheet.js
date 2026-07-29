@@ -160,7 +160,6 @@ class BottomSheet extends HTMLElement {
 			options.friction = friction;
 		}
 
-		_.#stopSpring();
 		_.#engine = new PhysicsEngine(options);
 
 		_.#engine.on('change', ({ position }) => {
@@ -739,19 +738,21 @@ class BottomSheet extends HTMLElement {
 		// re-committing the same snap still has to clear the drag's inline pixels
 		if (dialog && _.#springEnabled) {
 			const startPx = dialog.getBoundingClientRect().height;
+			const engine = _.#ensureEngine();
 
 			// The spring writes the height every frame, so the CSS transition
 			// has to be off or the two fight over the same property.
 			dialog.classList.remove('transitioning', 'snapping');
 			dialog.style.transform = '';
-			_.#springTarget = (value / 100) * window.innerHeight;
+			const targetPx = (value / 100) * window.innerHeight;
+			_.#springTarget = targetPx;
 
 			// velocityY is positive downward while height grows upward, so the
 			// sign flips. This is the whole point of the spring path: the settle
 			// leaves at the speed the finger was actually moving.
 			const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
 
-			_.#ensureEngine().animateTo(startPx, _.#springTarget, seed);
+			engine.animateTo(startPx, targetPx, seed);
 		} else if (dialog) {
 			// Only a settle onto a snap is paced by the snap duration. Adding
 			// this in #dragEnd instead would also catch the drag-dismiss, where
