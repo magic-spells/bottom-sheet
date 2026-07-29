@@ -1063,42 +1063,6 @@ sheet.show(trigger)</pre>
 			</section>
 
 			<!-- ---- Release ---- -->
-			<section class="demo-section">
-				<div class="spec">
-					<span class="spec-key">Release</span>
-					<span class="spec-rule" aria-hidden="true"></span>
-					<span class="spec-val">0.5 px/ms · 100px</span>
-				</div>
-				<h2>Let go, and the sheet <em>decides</em>.</h2>
-				<p class="demo-desc">
-					Two independent rules run on release, and either one dismisses.
-					<strong>A flick</strong> only needs speed — downward velocity above
-					<code>0.5 px/ms</code>. <strong>A pull</strong> only needs distance — more than
-					<code>100px</code> down, unless you have already reversed upward, which is what lets you
-					change your mind mid-drag.
-				</p>
-				<p class="demo-desc">
-					Cancelled gestures always snap back. Upward drags never dismiss; they get a square-root
-					rubber band instead of tracking the pointer one-to-one.
-				</p>
-				<p class="demo-desc">
-					<strong>Both rules are conditional once snap points exist.</strong> On a snapping sheet a
-					flick doesn't dismiss — it steps one snap in its own direction, and only runs out of snaps
-					at the shortest one. The 100px pull is measured below that shortest snap rather than from
-					wherever the sheet happened to be sitting.
-				</p>
-				<div class="stage stage-row">
-					<button class="btn" data-open="flick-panel">Try a flick</button>
-					<output class="readout" id="release-readout">Waiting for a release…</output>
-				</div>
-				<pre
-					class="code-block"><span class="hl-cm">// bottom-sheet.js — either rule dismisses</span>
-<span class="hl-tag">const</span> flick    = velocityY &gt; <span class="hl-val">0.5</span>;
-<span class="hl-tag">const</span> pastPull = deltaY &gt; <span class="hl-val">100</span> &amp;&amp; velocityY &gt; <span class="hl-val">-0.05</span>;
-
-<span class="hl-tag">if</span> (flick || pastPull) sheet.hide();
-<span class="hl-tag">else</span> dialog.style.transform = <span class="hl-val">''</span>; <span class="hl-cm">// snap back</span></pre>
-			</section>
 
 			<!-- ---- Handoff ---- -->
 			<section class="demo-section">
@@ -1145,11 +1109,11 @@ drag.claimOffset = deltaY;
 				<div class="spec">
 					<span class="spec-key">Snap</span>
 					<span class="spec-rule" aria-hidden="true"></span>
-					<span class="spec-val">40 · 70 · 90 dvh</span>
+					<span class="spec-val">40 · 70 · 100 dvh</span>
 				</div>
 				<h2>Three resting heights, and the sheet picks one.</h2>
 				<p class="demo-desc">
-					Give the sheet <code>snap-points="40,70,90"</code> and it stops being a two-state thing.
+					Give the sheet <code>snap-points="40,70,100"</code> and it stops being a two-state thing.
 					Each number is a percentage of the viewport that becomes the dialog's
 					<strong>height</strong>, not a distance to push it down by — which is what keeps the
 					footer pinned and the scroll region honest at every snap.
@@ -1174,7 +1138,7 @@ drag.claimOffset = deltaY;
 					<output class="readout" id="snap-readout">Not open yet…</output>
 				</div>
 				<pre
-					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"40,70,90"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;
+					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"40,70,100"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;
 
 <span class="hl-cm">// the current snap reflects back, on commit only</span>
 sheet.snap          <span class="hl-cm">// 70</span>
@@ -1307,7 +1271,7 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 				<div class="spec">
 					<span class="spec-key">Combined</span>
 					<span class="spec-rule" aria-hidden="true"></span>
-					<span class="spec-val">inset + snap-points</span>
+					<span class="spec-val">inset · 40 · 100 dvh</span>
 				</div>
 				<h2>Floating, and still snapping.</h2>
 				<p class="demo-desc">
@@ -1316,15 +1280,16 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					the combination most likely to break, so it gets its own sheet.
 				</p>
 				<p class="demo-desc">
-					One honest quirk: with a bottom gap, a floating sheet at a given snap sits slightly higher
-					than an edge-anchored one at the same snap. Height is height — the snap describes the
-					sheet, not the gap under it.
+					Two snaps, no middle ground — it either peeks or takes the screen. The snap is the sheet's
+					height, not its distance from the top, so with a bottom gap a floating sheet sits that
+					much higher than an edge-anchored one at the same number. At <code>100</code> that pushes
+					its top edge past the viewport and the upper corners round off screen.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="inset-snap-panel">Open both at once</button>
 				</div>
 				<pre
-					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">inset</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"35,65,88"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;</pre>
+					class="code-block">&lt;<span class="hl-tag">bottom-sheet</span> <span class="hl-attr">inset</span> <span class="hl-attr">snap-points</span>=<span class="hl-val">"40,100"</span>&gt;…&lt;/<span class="hl-tag">bottom-sheet</span>&gt;</pre>
 			</section>
 
 			<!-- ---- Display limit ---- -->
@@ -1527,8 +1492,8 @@ sheet.maxDisplayWidth = Infinity;</pre>
 					</label>
 					<label class="theme-row">
 						<span class="theme-label">Spring settle</span>
-						<input type="checkbox" id="theme-spring" role="switch" />
-						<span class="theme-value">off</span>
+						<input type="checkbox" id="theme-spring" role="switch" checked />
+						<span class="theme-value">on</span>
 					</label>
 					<label class="theme-row">
 						<span class="theme-label">· attraction</span>
@@ -1678,7 +1643,7 @@ sheet.hide();</pre>
 						<div>none</div>
 						<div>
 							Comma or space separated resting heights as percentages of the viewport height, e.g.
-							<code>"40,70,90"</code>. Sorted and deduped; values outside 0–100 and anything
+							<code>"40,70,100"</code>. Sorted and deduped; values outside 0–100 and anything
 							unparseable are dropped. Absent or empty leaves the sheet in its two-state mode.
 							Reflects the <code>snapPoints</code> property.
 						</div>
@@ -2035,32 +2000,6 @@ sheet.hide();</pre>
 			</dialog>
 		</dialog-panel>
 
-		<dialog-panel id="flick-panel">
-			<dialog aria-labelledby="flick-title">
-				<bottom-sheet>
-					<bottom-sheet-header id="flick-header">
-						<div class="sheet-header">
-							<h3 id="flick-title">Release with intent</h3>
-							<button class="close-btn" data-action-hide-dialog aria-label="Close">&times;</button>
-						</div>
-					</bottom-sheet-header>
-					<bottom-sheet-content>
-						<div class="sheet-copy">
-							<p>
-								A short, fast downward flick dismisses without asking for distance. A slow pull has
-								to travel past 100px.
-							</p>
-							<p>
-								Try the third case: pull well past the threshold, then reverse upward before letting
-								go. The sheet stays. Whatever you do, the readout in the section records the
-								distance, the velocity, and which way it went.
-							</p>
-						</div>
-					</bottom-sheet-content>
-				</bottom-sheet>
-			</dialog>
-		</dialog-panel>
-
 		<dialog-panel id="scroll-panel">
 			<dialog aria-labelledby="scroll-title">
 				<bottom-sheet>
@@ -2186,7 +2125,7 @@ sheet.hide();</pre>
 
 		<dialog-panel id="snap-panel">
 			<dialog aria-labelledby="snap-title">
-				<bottom-sheet snap-points="40,70,90">
+				<bottom-sheet snap-points="40,70,100">
 					<bottom-sheet-header>
 						<div class="sheet-header">
 							<h3 id="snap-title">Pick a height</h3>
@@ -2202,7 +2141,7 @@ sheet.hide();</pre>
 							<div class="controls">
 								<button class="btn" data-snap="40">40</button>
 								<button class="btn" data-snap="70">70</button>
-								<button class="btn" data-snap="90">90</button>
+								<button class="btn" data-snap="100">100</button>
 							</div>
 							<p>
 								Those buttons call <code>snapTo()</code>. Dragging below 40 is the only way to close
@@ -2283,7 +2222,7 @@ sheet.hide();</pre>
 
 		<dialog-panel id="inset-snap-panel">
 			<dialog aria-labelledby="inset-snap-title">
-				<bottom-sheet inset snap-points="35,65,88">
+				<bottom-sheet inset snap-points="40,100">
 					<bottom-sheet-header>
 						<div class="sheet-header">
 							<h3 id="inset-snap-title">Both at once</h3>
@@ -2419,51 +2358,6 @@ sheet.hide();</pre>
 				panel?.querySelector('bottom-sheet')?.show(trigger);
 			});
 
-			// ---- Release readout ----
-			// Mirrors the component's own rules over the same 100ms velocity window,
-			// so the number on the page is the number that made the decision.
-			const releaseReadout = $('#release-readout');
-			const flickHeader = $('#flick-header');
-			let gesture = null;
-
-			flickHeader.addEventListener('pointerdown', (event) => {
-				if (!event.isPrimary) return;
-				gesture = {
-					pointerId: event.pointerId,
-					startY: event.clientY,
-					samples: [{ y: event.clientY, t: event.timeStamp }],
-				};
-			});
-
-			flickHeader.addEventListener('pointermove', (event) => {
-				if (!gesture || event.pointerId !== gesture.pointerId) return;
-				gesture.samples.push({ y: event.clientY, t: event.timeStamp });
-				while (gesture.samples.length > 2 && gesture.samples[0].t < event.timeStamp - 100) {
-					gesture.samples.shift();
-				}
-			});
-
-			flickHeader.addEventListener('pointerup', (event) => {
-				if (!gesture || event.pointerId !== gesture.pointerId) return;
-				const first = gesture.samples[0];
-				const last = gesture.samples[gesture.samples.length - 1];
-				const velocity = last.t === first.t ? 0 : (last.y - first.y) / (last.t - first.t);
-				const delta = event.clientY - gesture.startY;
-
-				let outcome = 'snap back';
-				if (velocity > 0.5) outcome = 'dismiss · flick';
-				else if (delta > 100 && velocity > -0.05) outcome = 'dismiss · pull';
-				else if (delta > 100) outcome = 'snap back · reversed';
-
-				releaseReadout.textContent = `${outcome}\n${delta.toFixed(0)}px · ${velocity.toFixed(2)} px/ms`;
-				gesture = null;
-			});
-
-			flickHeader.addEventListener('pointercancel', () => {
-				releaseReadout.textContent = 'cancelled · snap back';
-				gesture = null;
-			});
-
 			// ---- Display limit readout ----
 			const widthReadout = $('#width-readout');
 			const updateWidthReadout = () => {
@@ -2597,10 +2491,12 @@ sheet.hide();</pre>
 					? 'on'
 					: 'off';
 
+				// Spring is the default now, so switching off is an explicit
+				// opt-out rather than the absence of an attribute
 				if (springInput.checked) {
 					themeSheet.setAttribute('spring', `${attraction},${friction}`);
 				} else {
-					themeSheet.removeAttribute('spring');
+					themeSheet.setAttribute('spring', 'none');
 				}
 			};
 
@@ -2633,7 +2529,7 @@ sheet.hide();</pre>
 				applyInset();
 				snapInput.checked = false;
 				applySnapPoints();
-				springInput.checked = false;
+				springInput.checked = true;
 				attractionInput.value = attractionInput.defaultValue;
 				frictionInput.value = frictionInput.defaultValue;
 				applySpring();

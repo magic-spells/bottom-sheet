@@ -63,8 +63,8 @@ class BottomSheet extends HTMLElement {
 	#snapPoints = [];
 	#snap = null;
 
-	// Spring settling. Null until the `spring` attribute opts in, so a sheet
-	// without it never constructs an engine and never runs a rAF loop.
+	// Spring settling, on by default. Built on the first settle rather than at
+	// construction, so a sheet that never snaps never makes one.
 	#engine = null;
 	#springTarget = null;
 
@@ -115,22 +115,33 @@ class BottomSheet extends HTMLElement {
 		}
 
 		if (name === 'spring') {
-			if (newValue === null) {
-				_.#stopSpring();
-				_.#engine = null;
-				return;
-			}
-			_.#buildEngine();
+			// Drop the engine rather than rebuilding here. The next settle
+			// reconstructs it with the new tuning, which keeps this callback out
+			// of the business of knowing whether one is currently running.
+			_.#stopSpring();
+			_.#engine = null;
 		}
 	}
 
 	/**
-	 * Creates the spring and wires it to the dialog height. Tuning comes from
-	 * the attribute value as `attraction,friction` so it can be dialled in from
-	 * the demo without a rebuild; anything unparseable falls back to defaults.
+	 * Whether the sheet settles on a spring. On by default — `spring="none"`
+	 * is the opt-out, matching how `max-display-width` spells the same idea.
+	 * @returns {boolean}
 	 */
-	#buildEngine() {
+	get #springEnabled() {
+		return this.getAttribute('spring') !== 'none';
+	}
+
+	/**
+	 * The engine, built on first use and rebuilt whenever the tuning changes.
+	 * Lazy rather than eager because `snap-points` can be set at any time, and
+	 * a sheet that never settles should never construct one.
+	 * @returns {PhysicsEngine}
+	 */
+	#ensureEngine() {
 		const _ = this;
+		if (_.#engine) return _.#engine;
+
 		const [attraction, friction] = String(_.getAttribute('spring') ?? '')
 			.split(/[\s,]+/)
 			.map(Number);
@@ -166,6 +177,8 @@ class BottomSheet extends HTMLElement {
 			_.#springTarget = null;
 			_.#applyRestingHeight();
 		});
+
+		return _.#engine;
 	}
 
 	/**
@@ -415,7 +428,7 @@ class BottomSheet extends HTMLElement {
 
 		// disconnectedCallback drops the engine, and a reconnect fires no
 		// attribute change to rebuild it
-		if (_.hasAttribute('spring') && !_.#engine) _.#buildEngine();
+		// The engine is built on first settle, so a reconnect needs nothing here
 
 		// Attributes parsed before connection could not reach the dialog
 		_.#applyRestingHeight();
@@ -724,7 +737,7 @@ class BottomSheet extends HTMLElement {
 
 		// Written explicitly rather than left to the attribute reflection —
 		// re-committing the same snap still has to clear the drag's inline pixels
-		if (dialog && _.#engine) {
+		if (dialog && _.#springEnabled) {
 			const startPx = dialog.getBoundingClientRect().height;
 
 			// The spring writes the height every frame, so the CSS transition
@@ -738,7 +751,7 @@ class BottomSheet extends HTMLElement {
 			// leaves at the speed the finger was actually moving.
 			const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
 
-			_.#engine.animateTo(startPx, _.#springTarget, seed);
+			_.#ensureEngine().animateTo(startPx, _.#springTarget, seed);
 		} else if (dialog) {
 			// Only a settle onto a snap is paced by the snap duration. Adding
 			// this in #dragEnd instead would also catch the drag-dismiss, where

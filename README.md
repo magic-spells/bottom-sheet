@@ -15,7 +15,8 @@ Accessible bottom-sheet custom elements built on `@magic-spells/dialog-panel`. T
 - Native dialog focus trapping, focus return, Escape handling, and modal semantics
 - Responsive display limit through `max-display-width`
 - Safe-area padding and contained vertical overscroll
-- CSS-transition animations with no physics dependency
+- Snap points settle on a velocity-aware spring, so a hard throw and a slow drag arrive differently
+- Opening, closing, and non-snapping sheets stay on plain CSS transitions
 
 ## Installation
 

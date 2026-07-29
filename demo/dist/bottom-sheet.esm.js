@@ -414,21 +414,27 @@ var BottomSheet = class extends HTMLElement {
 			return;
 		}
 		if (name === "spring") {
-			if (newValue === null) {
-				_.#stopSpring();
-				_.#engine = null;
-				return;
-			}
-			_.#buildEngine();
+			_.#stopSpring();
+			_.#engine = null;
 		}
 	}
 	/**
-	* Creates the spring and wires it to the dialog height. Tuning comes from
-	* the attribute value as `attraction,friction` so it can be dialled in from
-	* the demo without a rebuild; anything unparseable falls back to defaults.
+	* Whether the sheet settles on a spring. On by default — `spring="none"`
+	* is the opt-out, matching how `max-display-width` spells the same idea.
+	* @returns {boolean}
 	*/
-	#buildEngine() {
+	get #springEnabled() {
+		return this.getAttribute("spring") !== "none";
+	}
+	/**
+	* The engine, built on first use and rebuilt whenever the tuning changes.
+	* Lazy rather than eager because `snap-points` can be set at any time, and
+	* a sheet that never settles should never construct one.
+	* @returns {PhysicsEngine}
+	*/
+	#ensureEngine() {
 		const _ = this;
+		if (_.#engine) return _.#engine;
 		const [attraction, friction] = String(_.getAttribute("spring") ?? "").split(/[\s,]+/).map(Number);
 		const options = {
 			attraction: .053,
@@ -447,6 +453,7 @@ var BottomSheet = class extends HTMLElement {
 			_.#springTarget = null;
 			_.#applyRestingHeight();
 		});
+		return _.#engine;
 	}
 	/**
 	* Halts a running settle without letting its completion write a height
@@ -627,7 +634,6 @@ var BottomSheet = class extends HTMLElement {
 		_.#backdropBound = false;
 		_.#panelRef?.addEventListener("beforeShow", _.#handlers.beforeShow);
 		if (_.#dialogRef) _.#dialogRef.addEventListener("transitionend", _.#handlers.transitionEnd);
-		if (_.hasAttribute("spring") && !_.#engine) _.#buildEngine();
 		_.#applyRestingHeight();
 	}
 	disconnectedCallback() {
@@ -834,13 +840,13 @@ var BottomSheet = class extends HTMLElement {
 		const _ = this;
 		const from = _.#activeSnap;
 		const dialog = _.dialog;
-		if (dialog && _.#engine) {
+		if (dialog && _.#springEnabled) {
 			const startPx = dialog.getBoundingClientRect().height;
 			dialog.classList.remove("transitioning", "snapping");
 			dialog.style.transform = "";
 			_.#springTarget = value / 100 * window.innerHeight;
 			const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
-			_.#engine.animateTo(startPx, _.#springTarget, seed);
+			_.#ensureEngine().animateTo(startPx, _.#springTarget, seed);
 		} else if (dialog) {
 			dialog.classList.add("snapping");
 			dialog.style.transform = "";
