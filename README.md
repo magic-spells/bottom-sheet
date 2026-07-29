@@ -2,7 +2,7 @@
 
 Accessible bottom-sheet custom elements built on `@magic-spells/dialog-panel`. The sheet keeps modal behavior in the native `<dialog>` layer and adds Pointer Events dragging, velocity dismissal, scroll-aware gesture policy, and safe-area spacing.
 
-[**Live Demo**](./demo/)
+[**Live Demo**](https://magic-spells.github.io/bottom-sheet/demo/)
 
 ## Features
 
