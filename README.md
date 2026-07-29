@@ -162,6 +162,7 @@ Set these on `:root`, a panel, or another ancestor.
 | `--bs-panel-max-height` | `85vh` | Maximum sheet height. Inert when `snap-points` is set |
 | `--bs-panel-border-radius` | `25px` | Top corner radius, or all four with `inset` |
 | `--bs-panel-bleed` | `60px` | Off-screen fill of panel colour below an edge-anchored sheet, so an upward rubber-band drag never reveals the page beneath. Not applied with `inset` |
+| `--bs-panel-hidden-offset` | `20px` | Extra travel past the bottom edge when hidden. `100%` alone stops the sheet the instant its top edge clears the fold, which reads as the motion being cut short. Applied to the hidden, showing and hiding transforms alike, so opening and closing stay symmetrical |
 | `--bs-panel-inset-x` | `12px` | Left and right gap. `inset` only |
 | `--bs-panel-inset-bottom` | `12px` | Gap below the sheet, added on top of the safe area. `inset` only |
 | `--bs-panel-box-shadow` | layered shadow | Sheet elevation |
@@ -172,7 +173,9 @@ Set these on `:root`, a panel, or another ancestor.
 | `--bs-content-padding-block` | `0` | Top and bottom inset on the scrollable content |
 | `--bs-footer-padding` | `--bs-content-padding` | Footer inset (safe-area padding is added below) |
 | `--bs-footer-background` | `transparent` | Footer background |
-| `--bs-transition-duration` | `400ms` | Open, close, snap, and backdrop-fade duration |
+| `--bs-transition-duration` | `400ms` | Open, close, and backdrop-fade duration |
+| `--bs-snap-duration` | `280ms` | Settle onto a snap point. Separate from the above because a snap-to-snap move covers a fraction of the distance an open or a close does, and sharing one duration stretches the short move out until it reads as hesitation |
+| `--bs-snap-timing` | `--bs-transition-timing` | Timing function for the snap settle. Inherits until overridden. A `cubic-bezier` whose second control point exceeds `1` overshoots the snap and springs back — `cubic-bezier(0.25, 1.4, 0.45, 1)` lands about 5% past. Overshoot is a share of the travelled distance, so check your tallest snap still clears the viewport |
 | `--bs-transition-timing` | `cubic-bezier(0.32, 0.72, 0, 1)` | Transition timing function. Decelerate-only by default: every transition follows a release or a deliberate trigger, so it starts at speed and settles rather than easing in from rest |
 | `--bs-overlay-background` | `rgba(0, 0, 0, 0.5)` | Backdrop fill |
 | `--bs-overlay-blur` | `5px` | Backdrop blur |

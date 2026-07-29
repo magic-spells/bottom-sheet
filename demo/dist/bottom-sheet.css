@@ -5,6 +5,7 @@
   --bs-panel-inset-x: 12px;
   --bs-panel-inset-bottom: 12px;
   --bs-panel-bleed: 60px;
+  --bs-panel-hidden-offset: 20px;
   --bs-panel-box-shadow: 0 1px 20px -4px #0000004d, 0 0 7px 0 #0000001a;
   --bs-handle-color: #bbb;
   --bs-handle-width: 50px;
@@ -53,12 +54,12 @@ dialog-panel:has(bottom-sheet-footer) > dialog {
 
 dialog-panel[state="hidden"]:has(bottom-sheet) > dialog {
   opacity: 1;
-  transform: translate3d(0, 100%, 0);
+  transform: translate3d(0, calc(100% + var(--bs-panel-hidden-offset)), 0);
 }
 
 dialog-panel[state="showing"]:has(bottom-sheet) > dialog {
   opacity: 1;
-  transform: translate3d(0, 100%, 0);
+  transform: translate3d(0, calc(100% + var(--bs-panel-hidden-offset)), 0);
 }
 
 dialog-panel[state="shown"]:has(bottom-sheet) > dialog {
@@ -68,8 +69,8 @@ dialog-panel[state="shown"]:has(bottom-sheet) > dialog {
 
 dialog-panel[state="hiding"]:has(bottom-sheet) > dialog {
   opacity: 1;
+  transform: translate3d(0, calc(100% + var(--bs-panel-hidden-offset)), 0);
   transition: transform var(--bs-transition-duration) var(--bs-transition-timing);
-  transform: translate3d(0, 100%, 0);
 }
 
 dialog-panel:has(bottom-sheet) > dialog.transitioning {
@@ -111,7 +112,8 @@ dialog-panel:has(bottom-sheet[inset]) bottom-sheet-footer {
 
 :is(dialog-panel[state="hidden"]:has(bottom-sheet[inset]) > dialog, dialog-panel[state="showing"]:has(bottom-sheet[inset]) > dialog, dialog-panel[state="hiding"]:has(bottom-sheet[inset]) > dialog) {
   transform: translate3d(0,
-		calc(100% + var(--bs-panel-inset-bottom) + env(safe-area-inset-bottom, 0px)),
+		calc(100% + var(--bs-panel-inset-bottom) + env(safe-area-inset-bottom, 0px) +
+				var(--bs-panel-hidden-offset)),
 		0);
 }
 
