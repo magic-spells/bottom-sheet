@@ -1,6 +1,6 @@
 # Bottom Sheet Web Component
 
-Accessible bottom-sheet custom elements built on `@magic-spells/dialog-panel`. The sheet keeps modal behavior in the native `<dialog>` layer and adds Pointer Events dragging, velocity dismissal, scroll-aware gesture policy, safe-area spacing, and optional morph transitions.
+Accessible bottom-sheet custom elements built on `@magic-spells/dialog-panel`. The sheet keeps modal behavior in the native `<dialog>` layer and adds Pointer Events dragging, velocity dismissal, scroll-aware gesture policy, and safe-area spacing.
 
 [**Live Demo**](./demo/)
 
@@ -11,7 +11,6 @@ Accessible bottom-sheet custom elements built on `@magic-spells/dialog-panel`. T
 - Scrollable content keeps native vertical scrolling until a downward drag starts at the top
 - Upward drags use a restrained rubber-band transform
 - Native dialog focus trapping, focus return, Escape handling, and modal semantics
-- Optional card-to-sheet morph transitions
 - Responsive display limit through `max-display-width`
 - Safe-area padding and contained vertical overscroll
 - CSS-transition animations with no physics dependency
@@ -76,43 +75,6 @@ A release dismisses the sheet through either rule:
 - Downward distance is greater than `100px` and release velocity is greater than `-0.05 px/ms`, preventing dismissal after a meaningful upward reversal.
 
 Cancelled gestures always snap back. Upward drags never dismiss and use resistance instead of tracking the pointer one-to-one.
-
-## Morph Integration
-
-Install and load `@magic-spells/morph-engine`, assign one engine instance to the parent panel, and pass the source element to `show()`. `morph-display="flex"` preserves the bottom sheet layout during flight.
-
-```html
-<button id="sheet-card">Open from this card</button>
-
-<dialog-panel id="morph-panel" morph morph-display="flex">
-	<dialog>
-		<bottom-sheet>
-			<bottom-sheet-header>
-				<h2>Expanded card</h2>
-				<button data-action-hide-dialog aria-label="Close">&times;</button>
-			</bottom-sheet-header>
-			<bottom-sheet-content>
-				<p>The card has become a modal bottom sheet.</p>
-			</bottom-sheet-content>
-		</bottom-sheet>
-	</dialog>
-</dialog-panel>
-
-<script src="./morph-engine.min.js"></script>
-<script type="module">
-	const panel = document.querySelector('#morph-panel');
-	const card = document.querySelector('#sheet-card');
-
-	panel.morphEngine = new MorphEngine.MorphEngine({
-		lockScroll: false,
-		zIndex: 10000000,
-	});
-
-	card.addEventListener('click', () => panel.show(card));
-</script>
-```
-
-The `morph` marker prevents drag policy from fighting a sheet while the panel state is `showing` or `hiding`.
 
 ## Responsive Display Limit
 
