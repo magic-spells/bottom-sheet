@@ -1470,8 +1470,7 @@ panel.style.setProperty(<span class="hl-val">'--bs-panel-border-radius'</span>, 
 						role="log"
 						aria-live="polite"
 						aria-label="Event log">
-No events yet.</pre
-					>
+No events yet.</pre>
 				</div>
 				<pre
 					class="code-block"><span class="hl-tag">const</span> panel = document.querySelector(<span class="hl-val">'#sheet-panel'</span>);
@@ -1611,6 +1610,17 @@ sheet.hide();</pre>
 						<div><code>25px</code></div>
 						<div>
 							Top corner radius. The bottom corners stay square unless <code>inset</code> is set.
+						</div>
+					</div>
+					<div class="ref-row">
+						<div><code>--bs-panel-bleed</code></div>
+						<div><code>60px</code></div>
+						<div>
+							A hidden skirt of panel colour below an edge-anchored sheet. An upward rubber-band
+							drag lifts the sheet off the bottom edge; without this the page shows through the gap.
+							Implemented as a spread-less offset <code>box-shadow</code>, so
+							<code>overflow: hidden</code> can't clip it, it costs no layout, and it travels with
+							the drag transform. Dropped for <code>inset</code>, where the gap is the point.
 						</div>
 					</div>
 					<div class="ref-row">

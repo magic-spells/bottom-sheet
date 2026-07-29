@@ -5,6 +5,9 @@
 	--bs-panel-border-radius: 25px;
 	--bs-panel-inset-x: 12px;
 	--bs-panel-inset-bottom: 12px;
+	/* Off-screen fill below an edge-anchored sheet. Upward drag resistance is
+	   sqrt-based, so real overscroll tops out around 20-30px; 60 is headroom. */
+	--bs-panel-bleed: 60px;
 	--bs-panel-box-shadow: 0 1px 20px -4px rgba(0, 0, 0, 0.3), 0 0 7px 0 rgba(0, 0, 0, 0.1);
 	--bs-handle-color: #bbb;
 	--bs-handle-width: 50px;
@@ -42,7 +45,15 @@ dialog-panel:has(bottom-sheet) > dialog {
 	padding: 0;
 	padding-bottom: env(safe-area-inset-bottom, 0px);
 	overflow: hidden;
-	box-shadow: var(--bs-panel-box-shadow);
+	/* A hidden skirt of panel colour below the sheet. An upward rubber-band
+	   drag lifts the sheet off the bottom edge, and without this the page
+	   shows through the gap. A spread-less offset shadow paints outside the
+	   border box, so `overflow: hidden` cannot clip it and it costs no layout
+	   — and being part of the sheet's own rendering, it travels with the
+	   transform. Listed first so it paints over the ambient shadow. */
+	box-shadow:
+		0 var(--bs-panel-bleed) 0 0 var(--bs-panel-background),
+		var(--bs-panel-box-shadow);
 	will-change: transform;
 	transition: none;
 }
@@ -115,6 +126,9 @@ dialog-panel:has(bottom-sheet[inset]) > dialog {
 	border-radius: var(--bs-panel-border-radius);
 	margin-bottom: calc(var(--bs-panel-inset-bottom) + env(safe-area-inset-bottom, 0px));
 	padding-bottom: 0;
+	/* No skirt when detached — the gap under the sheet is the whole point,
+	   and a bleed would fill it in and square off the bottom corners */
+	box-shadow: var(--bs-panel-box-shadow);
 }
 
 /* The bottom margin already clears the safe area, so the footer must not add

@@ -1,10 +1,39 @@
 import { build, createServer } from 'vite';
-import { rm, mkdir } from 'node:fs/promises';
+import { rm, mkdir, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import liveReload from '@magic-spells/vite-plugin-live-reload';
 
 const isDev = process.env.NODE_ENV === 'development';
 const outDir = isDev ? 'demo/dist' : 'dist';
+
+// demo/vendor is committed so GitHub Pages can serve the demo without a
+// bundler. Copying it by hand is what left the source map behind — the ESM
+// bundle ends in a sourceMappingURL comment, so Vite reads a map that was
+// never copied and warns on every dev start. Syncing here also stops an
+// upgraded dependency from silently leaving a stale vendored copy.
+const VENDOR_SRC = 'node_modules/@magic-spells/dialog-panel/dist';
+const VENDOR_DIR = 'demo/vendor';
+const VENDOR_FILES = ['dialog-panel.css', 'dialog-panel.esm.js', 'dialog-panel.esm.js.map'];
+
+async function syncVendor() {
+	if (!existsSync(VENDOR_SRC)) {
+		console.warn(`vendor sync skipped — ${VENDOR_SRC} is not installed`);
+		return;
+	}
+
+	await mkdir(VENDOR_DIR, { recursive: true });
+
+	for (const file of VENDOR_FILES) {
+		const from = `${VENDOR_SRC}/${file}`;
+
+		if (!existsSync(from)) {
+			console.warn(`vendor sync skipped ${file} — not published by the dependency`);
+			continue;
+		}
+
+		await copyFile(from, `${VENDOR_DIR}/${file}`);
+	}
+}
 
 function sharedBuild(overrides = {}) {
 	return {
@@ -104,6 +133,8 @@ async function main() {
 	} else if (!existsSync(outDir)) {
 		await mkdir(outDir, { recursive: true });
 	}
+
+	await syncVendor();
 
 	const configs = isDev
 		? [esmConfig({ emitCss: true }), umdConfig()]
