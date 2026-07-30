@@ -402,10 +402,6 @@
 				text-wrap: pretty;
 			}
 
-			.demo-desc + .demo-desc {
-				margin-top: -0.9rem;
-			}
-
 			.demo-desc code,
 			.sheet-copy code,
 			.ref-note code {
@@ -1107,17 +1103,12 @@
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">3 nested elements</span>
 				</div>
-				<h2>Three nested elements, and only one moves.</h2>
+				<h2>The markup.</h2>
 				<p class="demo-desc">
-					<code>&lt;dialog-panel&gt;</code> owns the modal layer — focus trap, Escape, backdrop,
-					body scroll lock. The native <code>&lt;dialog&gt;</code> is the surface that slides.
-					<code>&lt;bottom-sheet&gt;</code> sits inside it and turns pointer gestures into a
-					transform on that surface.
-				</p>
-				<p class="demo-desc">
-					Inside the sheet, <strong>the header is the drag handle</strong> — it draws the rounded
-					bar and takes <code>touch-action: none</code> so a downward drag never gets read as a
-					scroll. The content below it flexes and scrolls on its own.
+					<code>&lt;dialog-panel&gt;</code> owns the modal layer, the native
+					<code>&lt;dialog&gt;</code> is the surface that slides, and
+					<code>&lt;bottom-sheet&gt;</code> turns pointer gestures into movement. The header draws
+					the handle and is always draggable; the content flexes and scrolls on its own.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="basic-panel">Open the basic sheet</button>
@@ -1150,21 +1141,9 @@ sheet.show(trigger)</pre>
 				</div>
 				<h2>Scrolling hands off to dragging.</h2>
 				<p class="demo-desc">
-					A downward drag on a list has two plausible readings: scroll it, or move the panel. The
-					sheet re-asks on <strong>every move</strong> rather than deciding once, so scrolling to
-					the top and continuing to pull hands the gesture over without you lifting a finger.
-				</p>
-				<p class="demo-desc">
-					The distance already travelled is recorded as <code>claimOffset</code> at the moment of
-					the handoff and subtracted from everything after it. Without that the panel would jump by
-					however far you'd already scrolled. Once the panel has claimed a gesture it keeps it until
-					release — the handoff only ever runs one way.
-				</p>
-				<p class="demo-desc">
-					<code>deltaY</code> is cumulative, so its sign only reports where the pointer sits
-					relative to where it started. The claim test needs to know which way it's travelling
-					<em>right now</em>, which is why <code>DragGesture</code> reports <code>moveY</code>
-					alongside it.
+					A downward drag on a list could mean scroll it, or move the panel. The sheet re-asks on
+					<strong>every move</strong> rather than deciding once — scroll to the top, keep pulling,
+					and the panel takes the gesture without a jump.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="scroll-panel">Open the long list</button>
@@ -1190,25 +1169,9 @@ drag.claimOffset = deltaY;
 				</div>
 				<h2>Snap points.</h2>
 				<p class="demo-desc">
-					Give the sheet <code>snap-points="40,70,100"</code> and it stops being a two-state thing.
-					Each number is a percentage of the viewport that becomes the dialog's
-					<strong>height</strong>, not a distance to push it down by — which is what keeps the
-					footer pinned and the scroll region honest at every snap.
-				</p>
-				<p class="demo-desc">
-					A flick steps exactly one snap in its own direction — never two, however hard you throw it
-					— and anything slower lands on the nearest. Stepping measures from where the sheet
-					<em>is</em>, so dragging from 40 past 90 and flicking up won't fall back to 70.
-				</p>
-				<p class="demo-desc">
-					Dragging below the shortest snap stops being a resize and becomes the ordinary dismiss
-					gesture, on the same transform path a sheet with no snap points uses. That's the only
-					place the sheet can close from.
-				</p>
-				<p class="demo-desc">
-					The resting height is written as a <code>dvh</code> string rather than pixels, so rotating
-					the device or opening the URL bar re-resolves it for free — there's no resize listener
-					behind this at all.
+					Give the sheet <code>snap-points="40,70,100"</code> and each number becomes a resting
+					height as a percentage of the viewport. A flick steps exactly one snap; anything slower
+					lands on the nearest. Dragging below the shortest snap dismisses the sheet.
 				</p>
 				<div class="stage stage-row">
 					<button class="btn" data-open="snap-panel">Open the snapping sheet</button>
@@ -1236,14 +1199,9 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 				</div>
 				<h2>A map-style sheet.</h2>
 				<p class="demo-desc">
-					The mechanics above are easier to trust when they're not in isolation. This is the shape
-					every maps app converges on: a sheet that opens at a peek, a search field in the fixed
-					header, and a results list that scrolls once there's room for it to.
-				</p>
-				<p class="demo-desc">
-					At the 25dvh peek there's barely a list to scroll, so dragging <strong>up</strong> grows
-					the sheet instead — you expand first, then scroll. Only at the tallest snap does an upward
-					drag go back to being an ordinary scroll.
+					The shape every maps app converges on: opens at a 25dvh peek, a search field in the fixed
+					header, a results list below. Dragging <strong>up</strong> grows the sheet first —
+					scrolling takes over at the tallest snap.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="map-panel">Open the peek</button>
@@ -1266,20 +1224,9 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 				</div>
 				<h2>A pinned footer.</h2>
 				<p class="demo-desc">
-					Add <code>&lt;bottom-sheet-footer&gt;</code> and the sheet becomes a three-part column.
-					<strong>Header and footer are fixed</strong> — both are <code>flex-shrink: 0</code> — and
-					only the content between them flexes and scrolls. Scroll the items below and the checkout
-					bar stays exactly where your thumb expects it.
-				</p>
-				<p class="demo-desc">
-					The footer also takes over the safe area. Without one the dialog pads itself by
-					<code>env(safe-area-inset-bottom)</code>; with one, that padding moves into the footer so
-					its background runs to the bottom edge rather than stopping short of the home indicator.
-					Tune it with <code>--bs-footer-padding</code>.
-				</p>
-				<p class="demo-desc">
-					The footer is a drag surface too, so the sheet is still dismissible from the one part of
-					it that's always within reach.
+					Add <code>&lt;bottom-sheet-footer&gt;</code> and only the content between the fixed
+					header and footer scrolls. The footer takes over the safe-area padding so its background
+					runs under the home indicator — and it's a drag surface too.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="footer-panel">Open the bag</button>
@@ -1306,24 +1253,11 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">detached · all corners</span>
 				</div>
-				<h2>Inset, detached from the edges.</h2>
+				<h2>A floating, inset sheet.</h2>
 				<p class="demo-desc">
-					Add the <code>inset</code> attribute and the sheet stops being welded to the bottom of the
-					screen: all four corners take <code>--bs-panel-border-radius</code>, and
-					<code>--bs-panel-inset-x</code> and <code>--bs-panel-inset-bottom</code> open a gap on
-					three sides. It's pure CSS — <code>:has(bottom-sheet[inset])</code> does the whole thing
-					and no JavaScript runs.
-				</p>
-				<p class="demo-desc">
-					<strong>The off-screen position has to be corrected too.</strong> The hidden state
-					translates down by <code>100%</code>, which is only the panel's own height — so once
-					there's a gap beneath it, the sheet would peek above the bottom edge by exactly the inset.
-				</p>
-				<p class="demo-desc">
-					The footer needs a second correction. Normally it absorbs
-					<code>env(safe-area-inset-bottom)</code> so its background runs under the home indicator,
-					but a floating sheet's bottom margin already clears that — left alone you'd get the gap
-					twice.
+					Add the <code>inset</code> attribute and the sheet detaches from the screen edges — all
+					four corners rounded, a gap on three sides. It's pure CSS:
+					<code>:has(bottom-sheet[inset])</code> does the whole thing and no JavaScript runs.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="inset-panel">Open the floating sheet</button>
@@ -1350,18 +1284,11 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">inset · 40 · 97 dvh</span>
 				</div>
-				<h2>Floating, and still snapping.</h2>
+				<h2>Inset + snap points.</h2>
 				<p class="demo-desc">
-					The two features touch the same element from opposite directions — one rewrites the
-					dialog's off-screen transform, the other drives its height every frame of a drag. This is
-					the combination most likely to break, so it gets its own sheet.
-				</p>
-				<p class="demo-desc">
-					Two snaps, no middle ground — it either peeks or takes the screen. The snap is the sheet's
-					height, not its distance from the top, so with a bottom gap a floating sheet sits that
-					much higher than an edge-anchored one at the same number. That's why the tall snap is
-					<code>97</code> rather than <code>100</code> — a detached sheet has to leave the gap out
-					of its own height, or its top corners round off screen.
+					The combination most likely to break, so it gets its own sheet. Two snaps, no middle
+					ground — it peeks at 40 or takes the screen at 97. The tall snap stays under 100 so a
+					detached sheet's top corners don't round off screen.
 				</p>
 				<div class="stage controls">
 					<button class="btn" data-open="inset-snap-panel">Open both at once</button>
@@ -1379,13 +1306,9 @@ sheet.addEventListener(<span class="hl-val">'snapChange'</span>, (e) =&gt; {
 				</div>
 				<h2>A maximum display width.</h2>
 				<p class="demo-desc">
-					A sheet anchored to the bottom edge stops making sense on a wide screen. Set
-					<code>max-display-width="768"</code> and the component enforces the boundary from both
-					sides: <code>show()</code> returns early above the limit, and a throttled resize listener
-					closes an already-open sheet the moment the viewport crosses it.
-				</p>
-				<p class="demo-desc">
-					Narrow this window under 768px and open it, then widen the window and watch it leave.
+					Set <code>max-display-width="768"</code> and the sheet only opens below 768px — and
+					closes itself the moment the viewport widens past the limit. Narrow this window, open it,
+					then widen the window and watch it leave.
 				</p>
 				<div class="stage stage-row">
 					<button class="btn" data-open="width-panel">Open below 768px</button>
@@ -1408,20 +1331,10 @@ sheet.maxDisplayWidth = Infinity;</pre>
 				</div>
 				<h2>Theming with custom properties.</h2>
 				<p class="demo-desc">
-					The sliders below aren't a component API — they write plain
-					<code>style.setProperty</code> calls onto the <code>&lt;dialog-panel&gt;</code>, and
-					inheritance carries them to the dialog, handle, padding and backdrop. That's why you can
-					theme one sheet without touching any other, and without a selector of your own.
-				</p>
-				<p class="demo-desc">
-					The switches are attributes on the <code>&lt;bottom-sheet&gt;</code> itself, so they
-					toggle rather than dial. Each snap gets its own, and the three are handed over unsorted —
-					the parser sorts and dedupes, so the sheet always opens at the shortest one that's on.
-					Leave a single snap enabled and it still works.
-				</p>
-				<p class="demo-desc">
-					Set the dials first — an open modal makes everything behind it inert, so these controls
-					are unreachable while the sheet is up.
+					The sliders write <code>--bs-*</code> custom properties onto the
+					<code>&lt;dialog-panel&gt;</code> — that's the entire theming API. The switches toggle
+					attributes on the sheet itself. Set the dials first: an open modal makes everything
+					behind it inert.
 				</p>
 				<div class="theme-grid">
 					<label class="theme-row">
@@ -1623,18 +1536,12 @@ panel.style.setProperty(<span class="hl-val">'--bs-panel-border-radius'</span>, 
 					<span class="spec-rule" aria-hidden="true"></span>
 					<span class="spec-val">4 events</span>
 				</div>
-				<h2>Four lifecycle events.</h2>
+				<h2>Lifecycle events.</h2>
 				<p class="demo-desc">
-					Events come from the parent <code>&lt;dialog-panel&gt;</code>, bubble, and are composed,
-					so one listener on the panel — or on <code>document</code> — sees the whole cycle.
-					<code>beforeShow</code> and <code>beforeHide</code> are cancelable; call
-					<code>preventDefault()</code> in either to hold the sheet where it is.
-				</p>
-				<p class="demo-desc">
-					Each event carries <code>detail.state</code>, which is also mirrored on the panel as a
-					<code>state</code> attribute and is what drives the CSS animation:
-					<code>hidden → showing → shown → hiding</code>. Open the sheet and close it to watch the
-					sequence fill in.
+					The parent panel fires <code>beforeShow</code>, <code>shown</code>,
+					<code>beforeHide</code>, and <code>hidden</code>; the first and third are cancelable.
+					Each carries <code>detail.state</code>, mirrored as a <code>state</code> attribute that
+					drives the CSS. Open the sheet and close it to watch the sequence fill in.
 				</p>
 				<div class="stage">
 					<div class="controls">
