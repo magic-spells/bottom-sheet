@@ -157,15 +157,39 @@ class DragGesture {
 		_.#pointerId = null;
 	}
 
+	/**
+	 * Abandons a gesture in place, leaving the element ready for a fresh one.
+	 *
+	 * Deliberately silent: onEnd is never fired. This exists for a teardown the
+	 * user did not ask for — the surface is being closed out from under a finger
+	 * that has not lifted — and every release rule downstream would otherwise act
+	 * on a lift that never happened.
+	 */
+	cancel() {
+		const _ = this;
+
+		// An uncaptured pointer never took capture, and a released one may
+		// already have had it taken away, so this can legitimately throw
+		if (_.#captured && _.#pointerId !== null) {
+			try {
+				_.#el.releasePointerCapture?.(_.#pointerId);
+			} catch {
+				// nothing left to release
+			}
+		}
+
+		_.#active = false;
+		_.#captured = false;
+		_.#pointerId = null;
+		_.#tracker.reset();
+	}
+
 	destroy() {
 		const _ = this;
 		for (const [type, handler] of Object.entries(_.#handlers)) {
 			_.#el.removeEventListener(type, handler);
 		}
-		_.#active = false;
-		_.#captured = false;
-		_.#pointerId = null;
-		_.#tracker.reset();
+		_.cancel();
 	}
 }
 

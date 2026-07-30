@@ -23,6 +23,10 @@ class StubElement {
 		this.capturedPointerId = pointerId;
 	}
 
+	releasePointerCapture(pointerId) {
+		if (this.capturedPointerId === pointerId) this.capturedPointerId = null;
+	}
+
 	fire(type, event) {
 		this.listeners.get(type)?.(event);
 	}
@@ -282,6 +286,50 @@ test('DragGesture reports pointer cancellation with zero velocity', () => {
 
 	assert.equal(endInfo.cancelled, true);
 	assert.equal(endInfo.velocityY, 0);
+
+	gesture.destroy();
+});
+
+test('DragGesture cancel abandons the gesture without reporting a release', () => {
+	const el = new StubElement();
+	const calls = [];
+	const gesture = new DragGesture(el, {
+		onStart: () => calls.push('start'),
+		onMove: () => calls.push('move'),
+		onEnd: () => calls.push('end'),
+	});
+
+	el.fire('pointerdown', ev({ clientY: 100, timeStamp: 0 }));
+	el.fire('pointermove', ev({ clientY: 160, timeStamp: 20 }));
+	assert.equal(el.capturedPointerId, 1);
+
+	gesture.cancel();
+
+	// The surface is closing out from under a finger that never lifted, so no
+	// release rule downstream is allowed to see an end
+	assert.deepEqual(calls, ['start', 'move']);
+	assert.equal(el.capturedPointerId, null, 'capture must not outlive the gesture');
+
+	// The abandoned pointer is inert, but the element is ready for a new one
+	el.fire('pointermove', ev({ clientY: 200, timeStamp: 40 }));
+	el.fire('pointerup', ev({ clientY: 200, timeStamp: 60 }));
+	assert.deepEqual(calls, ['start', 'move']);
+
+	el.fire('pointerdown', ev({ clientY: 300, timeStamp: 80 }));
+	el.fire('pointermove', ev({ clientY: 340, timeStamp: 100 }));
+	assert.deepEqual(calls, ['start', 'move', 'start', 'move']);
+
+	gesture.destroy();
+});
+
+test('DragGesture cancel is a no-op when no gesture is running', () => {
+	const el = new StubElement();
+	const gesture = new DragGesture(el, {
+		onEnd: () => assert.fail('cancel must never report a release'),
+	});
+
+	assert.doesNotThrow(() => gesture.cancel());
+	assert.equal(el.capturedPointerId, null);
 
 	gesture.destroy();
 });

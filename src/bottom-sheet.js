@@ -1,7 +1,7 @@
 import './bottom-sheet.css';
 import PhysicsEngine from '@magic-spells/physics-engine';
 import { DragGesture } from './drag-gesture.js';
-import { parseSnapPoints, resolveSnapTarget } from './snap-points.js';
+import { parseSnapPoints, resolveSnapTarget, SNAP_EPSILON } from './snap-points.js';
 
 // PhysicsEngine integrates once per 60fps frame — its `velocity` is units per
 // frame, not per millisecond. DragGesture reports px/ms, so every release
@@ -15,23 +15,6 @@ const FRAME_MS = 16.66;
 // measurement. Kept separate from FRAME_MS: that one is a unit conversion and
 // is not a matter of taste, this one is.
 const VELOCITY_BOOST = 1.1;
-
-/**
- * A throttle utility function to limit how often a function can be called
- * @param {Function} func - The function to throttle
- * @param {number} limit - The time limit in ms for the throttling
- * @returns {Function} A throttled function
- */
-const throttle = (func, limit) => {
-	let inThrottle;
-	return function (...args) {
-		if (!inThrottle) {
-			func.apply(this, args);
-			inThrottle = true;
-			setTimeout(() => (inThrottle = false), limit);
-		}
-	};
-};
 
 /**
  * BottomSheet class that manages drag gestures and delegates
@@ -74,7 +57,6 @@ class BottomSheet extends HTMLElement {
 	// cached references for reliable cleanup in disconnectedCallback
 	#panelRef = null;
 	#dialogRef = null;
-	#backdropBound = false;
 
 	/**
 	 * Define which attributes should be observed for changes
@@ -98,14 +80,20 @@ class BottomSheet extends HTMLElement {
 			if (newValue === null || newValue === 'none') {
 				_.maxDisplayWidth = Infinity;
 			} else {
-				const parsed = parseInt(newValue);
-				_.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
+				const trimmed = newValue.trim();
+				const parsed = Number(trimmed);
+				_.maxDisplayWidth =
+					trimmed === '' || !Number.isFinite(parsed) ? Infinity : parsed;
 			}
 			return;
 		}
 
 		if (name === 'snap-points') {
 			_.#snapPoints = parseSnapPoints(newValue);
+			if (newValue !== null && _.#snapPoints.length === 0) {
+				_.removeAttribute('snap-points');
+				return;
+			}
 			// Never written internally, so any change here is the author's and
 			// supersedes a settle — whose destination may not even be declared
 			// any more.
@@ -366,19 +354,12 @@ class BottomSheet extends HTMLElement {
 
 		_.#handlers = {
 			transitionEnd: _.#handleTransitionEnd.bind(_),
-			windowResize: throttle(() => {
+			windowResize: () => {
 				if (window.innerWidth > _.maxDisplayWidth && _.panel?.isOpen) {
 					_.hide();
 				}
-			}, 100),
-			// Lazily bind the backdrop gesture on first show (it may not exist at connectedCallback)
-			// Also add transitioning class so the open slide-up animates
+			},
 			beforeShow: () => {
-				const backdrop = _.backdrop;
-				if (backdrop && !_.#backdropBound) {
-					_.#gestures.push(new DragGesture(backdrop, _.#surfaceCallbacks('backdrop')));
-					_.#backdropBound = true;
-				}
 				// Restore the resting height before the transition is armed, so a
 				// sheet reopened after a drag-dismiss opens at its snap rather
 				// than animating out to it.
@@ -387,6 +368,22 @@ class BottomSheet extends HTMLElement {
 				// duration even if the last settle was interrupted by the hide.
 				_.dialog?.classList.remove('snapping');
 				_.dialog?.classList.add('transitioning');
+			},
+			// Escape, a backdrop tap and every [data-action-hide-dialog] button
+			// close through dialog-panel and never reach hide(), so this is the
+			// only place those closes can be cleaned up after.
+			//
+			// The work cannot happen here. `beforeHide` is cancelable, and a
+			// refused close must leave a running settle alone — tearing one down
+			// on the announcement rather than the verdict is the same bug hide()
+			// already carries a note about. dialog-panel sets `state` synchronously
+			// as soon as the dispatch returns, so a microtask is the earliest
+			// point the verdict can be read.
+			beforeHide: () => {
+				queueMicrotask(() => {
+					if (_.#panelRef?.getAttribute('state') !== 'hiding') return;
+					_.#teardownForClose();
+				});
 			},
 		};
 	}
@@ -419,7 +416,7 @@ class BottomSheet extends HTMLElement {
 		if (accepted === false) {
 			// Refused. Undo the gesture rather than the settle: a spring that is
 			// still running owns the height and will land on its own.
-			if (_.dialog) {
+			if (_.dialog && _.#springTarget === null) {
 				_.dialog.classList.add('transitioning');
 				_.dialog.style.transform = '';
 			}
@@ -438,6 +435,39 @@ class BottomSheet extends HTMLElement {
 			_.dialog.classList.remove('snapping');
 		}
 		return true;
+	}
+
+	/**
+	 * Hands the sheet back to the panel for a close it did not start.
+	 *
+	 * Idempotent by construction — stopping a stopped spring, clearing a cleared
+	 * transform and removing an absent class are all no-ops — because a close
+	 * that does come through hide() fires `beforeHide` as well and runs this a
+	 * second time.
+	 *
+	 * `transitioning` is deliberately left alone: the [state='hiding'] rule
+	 * carries its own transition, and removing the class mid-close would strand
+	 * a snap-back that was already running under it.
+	 */
+	#teardownForClose() {
+		const _ = this;
+
+		// A settle must not keep writing heights into a closing sheet
+		_.#stopSpring();
+
+		// An interrupted gesture never gets its pointerup, so nothing else would
+		// ever clear it — and its inline transform sits on top of the exit.
+		for (const gesture of _.#gestures) {
+			gesture.cancel();
+		}
+		_.#drag = { active: false };
+
+		if (_.dialog) {
+			_.dialog.style.transform = '';
+			// Left on, the snap pacing outranks the hiding rule and the close
+			// silently runs at the settle's duration.
+			_.dialog.classList.remove('snapping');
+		}
 	}
 
 	connectedCallback() {
@@ -467,10 +497,8 @@ class BottomSheet extends HTMLElement {
 			_.content.addEventListener('touchmove', _.#scrollVeto, { passive: false });
 		}
 
-		// Backdrop may not exist yet (dialog-panel auto-creates it),
-		// so bind its gesture lazily on first show
-		_.#backdropBound = false;
 		_.#panelRef?.addEventListener('beforeShow', _.#handlers.beforeShow);
+		_.#panelRef?.addEventListener('beforeHide', _.#handlers.beforeHide);
 
 		if (_.#dialogRef) {
 			_.#dialogRef.addEventListener('transitionend', _.#handlers.transitionEnd);
@@ -498,7 +526,6 @@ class BottomSheet extends HTMLElement {
 			_.content.removeEventListener('touchmove', _.#scrollVeto);
 		}
 		_.#scrollVeto = null;
-		_.#backdropBound = false;
 		_.#drag = { active: false };
 		// Leaves no rAF loop running against a detached dialog
 		_.#stopSpring();
@@ -506,6 +533,7 @@ class BottomSheet extends HTMLElement {
 		_.#engine = null;
 
 		_.#panelRef?.removeEventListener('beforeShow', _.#handlers.beforeShow);
+		_.#panelRef?.removeEventListener('beforeHide', _.#handlers.beforeHide);
 
 		if (_.#dialogRef) {
 			_.#dialogRef.removeEventListener('transitionend', _.#handlers.transitionEnd);
@@ -543,13 +571,13 @@ class BottomSheet extends HTMLElement {
 	#surfaceCallbacks(surface) {
 		const _ = this;
 		return {
-			onStart: () => _.#dragStart(surface),
+			onStart: () => _.#dragStart(),
 			onMove: (info) => _.#dragMove(surface, info),
 			onEnd: (info) => _.#dragEnd(surface, info),
 		};
 	}
 
-	#dragStart(surface) {
+	#dragStart() {
 		const _ = this;
 		const state = _.panel?.getAttribute('state');
 		if (_.panel?.hasAttribute('morph') && (state === 'showing' || state === 'hiding')) {
@@ -578,7 +606,6 @@ class BottomSheet extends HTMLElement {
 		_.#drag = {
 			active: true,
 			claimed: false,
-			surface,
 			// Distance already travelled when the panel took the gesture over, so
 			// a mid-gesture handoff starts from zero instead of jumping.
 			claimOffset: 0,
@@ -607,7 +634,7 @@ class BottomSheet extends HTMLElement {
 	 */
 	#shouldClaim(surface, moveY) {
 		const _ = this;
-		// Header, footer and backdrop are dedicated drag surfaces
+		// Header and footer are dedicated drag surfaces
 		if (surface !== 'content') return true;
 		if (moveY === 0) return false;
 
@@ -697,20 +724,12 @@ class BottomSheet extends HTMLElement {
 		}
 	}
 
-	#dragEnd(surface, { deltaY, velocityY, duration, cancelled }) {
+	#dragEnd(surface, { deltaY, velocityY, cancelled }) {
 		const _ = this;
 		const drag = _.#drag;
 
 		if (!drag.active) return;
 		_.#drag = { active: false };
-
-		// A cancelled pointer is not a tap. The browser takes the gesture over
-		// without the user ever having lifted, and every other release path here
-		// treats that as "put it back", not "act on it".
-		if (surface === 'backdrop' && !cancelled && Math.abs(deltaY) < 10 && duration < 300) {
-			_.hide();
-			return;
-		}
 
 		_.dialog?.classList.add('transitioning');
 
@@ -795,18 +814,27 @@ class BottomSheet extends HTMLElement {
 		const _ = this;
 		const from = _.#activeSnap;
 		const dialog = _.dialog;
+		const targetPx = (value / 100) * window.innerHeight;
+		const startPx = dialog?.getBoundingClientRect().height ?? targetPx;
+
+		// Below the shortest snap the sheet stops resizing: the height is pinned
+		// at that snap and the travel is carried by the transform instead. The
+		// spring drives height, so it has nothing to animate here — and its
+		// branch drops `transitioning` and clears the transform with no
+		// transition armed, which returns the sheet home in a single frame. A
+		// settle with no height left to travel therefore takes the CSS clock,
+		// the only one that can carry the transform back.
+		const heightAtTarget = Math.abs(startPx - targetPx) <= SNAP_EPSILON;
 
 		// Written explicitly rather than left to the attribute reflection —
 		// re-committing the same snap still has to clear the drag's inline pixels
-		if (dialog && _.#springEnabled) {
-			const startPx = dialog.getBoundingClientRect().height;
+		if (dialog && _.#springEnabled && !heightAtTarget) {
 			const engine = _.#ensureEngine();
 
 			// The spring writes the height every frame, so the CSS transition
 			// has to be off or the two fight over the same property.
 			dialog.classList.remove('transitioning', 'snapping');
 			dialog.style.transform = '';
-			const targetPx = (value / 100) * window.innerHeight;
 			_.#springTarget = targetPx;
 
 			// velocityY is positive downward while height grows upward, so the
@@ -855,23 +883,11 @@ class BottomSheet extends HTMLElement {
 	}
 }
 
-class BottomSheetContent extends HTMLElement {
-	constructor() {
-		super();
-	}
-}
+class BottomSheetContent extends HTMLElement {}
 
-class BottomSheetHeader extends HTMLElement {
-	constructor() {
-		super();
-	}
-}
+class BottomSheetHeader extends HTMLElement {}
 
-class BottomSheetFooter extends HTMLElement {
-	constructor() {
-		super();
-	}
-}
+class BottomSheetFooter extends HTMLElement {}
 
 if (!customElements.get('bottom-sheet')) {
 	customElements.define('bottom-sheet', BottomSheet);

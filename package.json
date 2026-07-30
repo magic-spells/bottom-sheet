@@ -15,7 +15,8 @@
 			"default": "./dist/bottom-sheet.esm.js"
 		},
 		"./css": "./dist/bottom-sheet.css",
-		"./css/min": "./dist/bottom-sheet.min.css"
+		"./css/min": "./dist/bottom-sheet.min.css",
+		"./package.json": "./package.json"
 	},
 	"sideEffects": true,
 	"repository": {
@@ -48,7 +49,7 @@
 		"prepublishOnly": "npm run build"
 	},
 	"peerDependencies": {
-		"@magic-spells/dialog-panel": "^1.2.0"
+		"@magic-spells/dialog-panel": "^1.2.1"
 	},
 	"publishConfig": {
 		"access": "public",
@@ -61,7 +62,7 @@
 	],
 	"devDependencies": {
 		"@eslint/js": "^9.38.0",
-		"@magic-spells/dialog-panel": "^1.2.0",
+		"@magic-spells/dialog-panel": "^1.2.1",
 		"@magic-spells/vite-plugin-live-reload": "^0.1.0",
 		"eslint": "^10.8.0",
 		"globals": "^15.15.0",

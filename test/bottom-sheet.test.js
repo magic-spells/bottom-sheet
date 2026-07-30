@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
 
@@ -95,6 +95,15 @@ function resetFrames() {
 }
 
 const { BottomSheet } = await import('../src/bottom-sheet.js');
+const connectedSheets = new Set();
+
+afterEach(() => {
+	for (const sheet of connectedSheets) {
+		sheet.disconnectedCallback();
+	}
+	connectedSheets.clear();
+	resetFrames();
+});
 
 /**
  * A dialog whose measured height tracks whatever was last written to it, so a
@@ -131,23 +140,40 @@ function makePanel({ accepts = true } = {}) {
 	return Object.assign(new EventTarget(), {
 		hideCalls: 0,
 		isOpen: true,
-		// dialog-panel creates the backdrop itself, so the sheet binds its
-		// gesture lazily on the first beforeShow rather than at connect
+		state: 'shown',
 		backdrop: null,
 		hide() {
 			this.hideCalls++;
-			return accepts;
+			// `beforeHide` is cancelable and the state only moves if it survives,
+			// which is exactly why the sheet's cleanup has to wait a microtask
+			// before it reads the verdict rather than acting on the announcement
+			this.dispatchEvent(new Event('beforeHide'));
+			if (!accepts) return false;
+
+			this.state = 'hiding';
+			return true;
 		},
 		show() {
 			this.dispatchEvent(new Event('beforeShow'));
 			return true;
 		},
-		getAttribute: () => 'shown',
+		getAttribute(name) {
+			return name === 'state' ? this.state : null;
+		},
 		hasAttribute: () => false,
 		querySelector(selector) {
 			return selector === 'dialog-backdrop' ? this.backdrop : null;
 		},
 	});
+}
+
+/**
+ * Lets the deferred beforeHide cleanup run. A timer rather than an awaited
+ * promise, so every already-queued microtask has drained by the time it
+ * resolves regardless of how many ticks deep the deferral goes.
+ */
+function flush() {
+	return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 /** A drag surface that hands back the listeners DragGesture binds to it */
@@ -168,6 +194,7 @@ function makeSheet({ snapPoints = [40, 70], snap = null, accepts = true } = {}) 
 	const panel = makePanel({ accepts });
 	const header = makeSurface();
 	const sheet = new BottomSheet();
+	connectedSheets.add(sheet);
 
 	sheet.closestDialog = dialog;
 	sheet.closestPanel = panel;
@@ -198,6 +225,56 @@ function pointerDrag(surface, path) {
 	for (const y of path.slice(1)) surface.listeners.get('pointermove')(event(y));
 	surface.listeners.get('pointerup')(event(path[path.length - 1]));
 }
+
+/**
+ * Presses and drags without ever lifting, so a live gesture can be interrupted
+ * @param {Object} surface - A surface from makeSurface
+ * @param {number[]} path - Absolute clientY positions, starting at the press
+ * @returns {Function} Fires one more move, at an absolute clientY
+ */
+function pointerHold(surface, path) {
+	let time = clock;
+	const event = (y) => ({
+		pointerId: 1,
+		isPrimary: true,
+		clientY: y,
+		timeStamp: (time += FRAME_MS),
+	});
+
+	surface.listeners.get('pointerdown')(event(path[0]));
+	for (const y of path.slice(1)) surface.listeners.get('pointermove')(event(y));
+
+	return (y) => surface.listeners.get('pointermove')(event(y));
+}
+
+test('unparseable snap-points are removed while valid points remain reflected', () => {
+	const { sheet } = makeSheet({ snapPoints: [] });
+
+	for (const value of ['40%,70%', 'none', '']) {
+		sheet.setAttribute('snap-points', value);
+		assert.equal(sheet.getAttribute('snap-points'), null, value);
+		assert.deepEqual(sheet.snapPoints, [], value);
+	}
+
+	sheet.setAttribute('snap-points', '30,60');
+	assert.equal(sheet.getAttribute('snap-points'), '30,60');
+	assert.deepEqual(sheet.snapPoints, [30, 60]);
+});
+
+test('max-display-width accepts only complete finite numeric strings', () => {
+	const { sheet } = makeSheet({ snapPoints: [] });
+
+	for (const [value, expected] of [
+		['100%', Infinity],
+		['1e3', 1000],
+		['  ', Infinity],
+		['', Infinity],
+		['768', 768],
+	]) {
+		sheet.setAttribute('max-display-width', value);
+		assert.equal(sheet.maxDisplayWidth, expected, value);
+	}
+});
 
 test('the first spring commit keeps a finite target through lazy engine initialization', () => {
 	const { sheet, dialog } = makeSheet({ snapPoints: [40, 70] });
@@ -261,23 +338,35 @@ test('a refused close leaves a running settle alone and lets it land', () => {
 
 	sheet.snapTo(70);
 	runFrames(8);
+	const classes = new Set(dialog.classes);
+	const height = dialog.style.height;
 
 	assert.equal(sheet.hide(), false);
 	assert.equal(panel.hideCalls, 1);
+	assert.deepEqual(dialog.classes, classes);
+	assert.equal(dialog.style.height, height);
 
+	runFrames(1);
+	assert.notEqual(dialog.style.height, height, 'the spring target should remain live');
 	runFrames();
 	assert.equal(dialog.style.height, '70dvh', 'the settle should have been allowed to finish');
 	assert.equal(sheet.snap, 70);
 });
 
-test('a refused close with no settle running restores the resting height', () => {
-	const { sheet, dialog } = makeSheet({ snapPoints: [40, 70], snap: 40, accepts: false });
+test('a refused close after a plain drag re-arms the transition and clears the transform', () => {
+	const { sheet, dialog, header } = makeSheet({
+		snapPoints: [40, 70],
+		snap: 40,
+		accepts: false,
+	});
 
-	dialog.style.transform = 'translate3d(0, 120px, 0)';
-	dialog.style.height = '280px';
+	pointerHold(header, path(60));
+	assert.ok(dialog.style.transform.includes('translate3d'), 'expected a live drag');
+	assert.equal(dialog.classList.contains('transitioning'), false);
 
 	assert.equal(sheet.hide(), false);
 
+	assert.equal(dialog.classList.contains('transitioning'), true);
 	assert.equal(dialog.style.transform, '');
 	assert.equal(dialog.style.height, '40dvh');
 });
@@ -322,6 +411,23 @@ test('reversing upward below the shortest snap does not dismiss', () => {
 	assert.equal(sheet.snap, 40);
 });
 
+test('a soft release below the shortest snap animates home instead of teleporting', () => {
+	const { sheet, dialog, panel, header } = makeSheet({ snapPoints: [40, 70], snap: 40 });
+
+	// Below the shortest snap the height is pinned there and the travel is
+	// carried by the transform, so the spring has no height left to animate —
+	// while its branch clears the transform with nothing armed to transition it.
+	pointerDrag(header, path(60, 0, 3));
+
+	assert.equal(panel.hideCalls, 0);
+	assert.equal(animationFrames.length, 0, 'the spring has nothing to settle here');
+	assert.equal(dialog.style.transform, '');
+	assert.equal(dialog.style.height, '40dvh');
+	assert.ok(dialog.classList.contains('transitioning'), 'the return must stay on a clock');
+	assert.ok(dialog.classList.contains('snapping'));
+	assert.equal(sheet.snap, 40);
+});
+
 test('a slow downward release below the shortest snap still dismisses', () => {
 	const { panel, header } = makeSheet({ snapPoints: [40, 70], snap: 40 });
 
@@ -339,20 +445,85 @@ test('a downward flick below the shortest snap dismisses', () => {
 	assert.equal(panel.hideCalls, 1);
 });
 
-test('a cancelled backdrop pointer is not treated as a tap', () => {
+/* ---- Parent-driven closes ----
+   Escape, a backdrop tap and every [data-action-hide-dialog] button call
+   dialog-panel.hide() directly, so none of them reach BottomSheet.hide(). The
+   sheet only learns about them through `beforeHide`. */
+
+test('a parent-driven close drops the snap pacing the settle left behind', async () => {
+	const { sheet, dialog, panel } = makeSheet({ snapPoints: [40, 70], snap: 40 });
+	sheet.setAttribute('spring', 'none');
+
+	sheet.snapTo(70);
+	assert.ok(dialog.classList.contains('snapping'), 'expected the settle to be armed');
+
+	panel.hide();
+	await flush();
+
+	// Left on, the snap pacing outranks the hiding rule and the close runs at
+	// the settle's duration rather than the shared one
+	assert.equal(dialog.classList.contains('snapping'), false);
+	assert.ok(dialog.classList.contains('transitioning'), 'the hiding rule brings its own');
+});
+
+test('a parent-driven close halts a settle instead of letting it paint over the exit', async () => {
+	const { sheet, dialog, panel } = makeSheet({ snapPoints: [40, 70], snap: 40 });
+
+	sheet.snapTo(70);
+	runFrames(8);
+	assert.ok(dialog.style.height.endsWith('px'), 'expected the settle to be mid-flight');
+
+	panel.hide();
+	await flush();
+
+	const halted = dialog.style.height;
+	runFrames();
+	assert.equal(dialog.style.height, halted, 'the spring must stop writing into a closing sheet');
+	assert.equal(dialog.style.transform, '');
+	assert.equal(dialog.classList.contains('snapping'), false);
+});
+
+test('a cancelled parent-driven close leaves a running settle alone', async () => {
+	const { sheet, dialog, panel } = makeSheet({ snapPoints: [40, 70], accepts: false });
+
+	sheet.snapTo(70);
+	runFrames(8);
+
+	// `beforeHide` announces a close; it does not commit to one. Tearing down on
+	// the announcement kills a settle the panel then refuses to close over.
+	assert.equal(panel.hide(), false);
+	await flush();
+
+	runFrames();
+	assert.equal(dialog.style.height, '70dvh', 'the settle should have been allowed to finish');
+	assert.equal(sheet.snap, 70);
+});
+
+test('a parent-driven close mid-drag releases the gesture and clears its transform', async () => {
+	const { dialog, panel, header } = makeSheet({ snapPoints: [40, 70], snap: 40 });
+
+	const move = pointerHold(header, path(120));
+	assert.ok(dialog.style.transform.includes('translate3d'), 'expected a live drag');
+
+	panel.hide();
+	await flush();
+
+	// An interrupted pointer never gets its pointerup, so nothing else would
+	// ever clear the drag — and its transform sits on top of the exit animation
+	assert.equal(dialog.style.transform, '');
+	assert.equal(dialog.classList.contains('snapping'), false);
+
+	move(200);
+	assert.equal(dialog.style.transform, '', 'the abandoned pointer must be inert');
+});
+
+test('beforeShow does not bind a gesture to the inert backdrop sibling', () => {
 	const backdrop = makeSurface();
 	const { sheet, panel } = makeSheet({ snapPoints: [] });
 
-	// The backdrop gesture is bound lazily on the first beforeShow
 	panel.backdrop = backdrop;
+	assert.equal(sheet.backdrop, backdrop);
 	sheet.show();
 
-	assert.ok(backdrop.listeners.size > 0, 'expected the backdrop gesture to be bound');
-
-	const event = (y, t) => ({ pointerId: 1, isPrimary: true, clientY: y, timeStamp: t });
-	backdrop.listeners.get('pointerdown')(event(500, 0));
-	backdrop.listeners.get('pointermove')(event(502, 16));
-	backdrop.listeners.get('pointercancel')(event(502, 32));
-
-	assert.equal(panel.hideCalls, 0, 'a cancelled pointer is not a tap');
+	assert.equal(backdrop.listeners.size, 0);
 });

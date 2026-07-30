@@ -70,7 +70,7 @@ Any element with `data-action-hide-dialog` delegates closing to the parent panel
 
 ## Gestures
 
-The header and optional footer are always drag surfaces. The generated backdrop accepts a downward drag or a short tap.
+The header and optional footer are always drag surfaces. The generated backdrop closes on tap through `dialog-panel`.
 
 The content is the interesting case. Rather than deciding once at `pointerdown`, the sheet re-asks on every move until the panel claims the gesture. The panel claims when:
 
@@ -246,7 +246,7 @@ Set these on `:root`, a panel, or another ancestor.
 | `header` | Descendant `<bottom-sheet-header>` |
 | `content` | Descendant `<bottom-sheet-content>` |
 | `footer` | Descendant `<bottom-sheet-footer>`, when present |
-| `backdrop` | Generated `<dialog-backdrop>`, when available |
+| `backdrop` | Generated `<dialog-backdrop>`, when available. Tap handling belongs to `dialog-panel`; it is not a drag surface |
 
 ## Events
 

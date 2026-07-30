@@ -279,13 +279,28 @@ var DragGesture = class {
 		});
 		_.#pointerId = null;
 	}
-	destroy() {
+	/**
+	* Abandons a gesture in place, leaving the element ready for a fresh one.
+	*
+	* Deliberately silent: onEnd is never fired. This exists for a teardown the
+	* user did not ask for — the surface is being closed out from under a finger
+	* that has not lifted — and every release rule downstream would otherwise act
+	* on a lift that never happened.
+	*/
+	cancel() {
 		const _ = this;
-		for (const [type, handler] of Object.entries(_.#handlers)) _.#el.removeEventListener(type, handler);
+		if (_.#captured && _.#pointerId !== null) try {
+			_.#el.releasePointerCapture?.(_.#pointerId);
+		} catch {}
 		_.#active = false;
 		_.#captured = false;
 		_.#pointerId = null;
 		_.#tracker.reset();
+	}
+	destroy() {
+		const _ = this;
+		for (const [type, handler] of Object.entries(_.#handlers)) _.#el.removeEventListener(type, handler);
+		_.cancel();
 	}
 };
 /**
@@ -328,22 +343,6 @@ var resolveSnapTarget = ({ currentPx, velocityY, snapsPx, flickVelocity }) => {
 var FRAME_MS = 16.66;
 var VELOCITY_BOOST = 1.1;
 /**
-* A throttle utility function to limit how often a function can be called
-* @param {Function} func - The function to throttle
-* @param {number} limit - The time limit in ms for the throttling
-* @returns {Function} A throttled function
-*/
-var throttle = (func, limit) => {
-	let inThrottle;
-	return function(...args) {
-		if (!inThrottle) {
-			func.apply(this, args);
-			inThrottle = true;
-			setTimeout(() => inThrottle = false, limit);
-		}
-	};
-};
-/**
 * BottomSheet class that manages drag gestures and delegates
 * show/hide to a parent <dialog-panel> element.
 *
@@ -373,7 +372,6 @@ var BottomSheet = class extends HTMLElement {
 	#reflectingSnap = false;
 	#panelRef = null;
 	#dialogRef = null;
-	#backdropBound = false;
 	/**
 	* Define which attributes should be observed for changes
 	* @returns {string[]} List of attribute names to observe
@@ -398,13 +396,18 @@ var BottomSheet = class extends HTMLElement {
 		if (name === "max-display-width") {
 			if (newValue === null || newValue === "none") _.maxDisplayWidth = Infinity;
 			else {
-				const parsed = parseInt(newValue);
-				_.maxDisplayWidth = !isNaN(parsed) ? parsed : Infinity;
+				const trimmed = newValue.trim();
+				const parsed = Number(trimmed);
+				_.maxDisplayWidth = trimmed === "" || !Number.isFinite(parsed) ? Infinity : parsed;
 			}
 			return;
 		}
 		if (name === "snap-points") {
 			_.#snapPoints = parseSnapPoints(newValue);
+			if (newValue !== null && _.#snapPoints.length === 0) {
+				_.removeAttribute("snap-points");
+				return;
+			}
 			_.#supersedeSettle();
 			return;
 		}
@@ -600,18 +603,19 @@ var BottomSheet = class extends HTMLElement {
 		const _ = this;
 		_.#handlers = {
 			transitionEnd: _.#handleTransitionEnd.bind(_),
-			windowResize: throttle(() => {
+			windowResize: () => {
 				if (window.innerWidth > _.maxDisplayWidth && _.panel?.isOpen) _.hide();
-			}, 100),
+			},
 			beforeShow: () => {
-				const backdrop = _.backdrop;
-				if (backdrop && !_.#backdropBound) {
-					_.#gestures.push(new DragGesture(backdrop, _.#surfaceCallbacks("backdrop")));
-					_.#backdropBound = true;
-				}
 				_.#applyRestingHeight();
 				_.dialog?.classList.remove("snapping");
 				_.dialog?.classList.add("transitioning");
+			},
+			beforeHide: () => {
+				queueMicrotask(() => {
+					if (_.#panelRef?.getAttribute("state") !== "hiding") return;
+					_.#teardownForClose();
+				});
 			}
 		};
 	}
@@ -638,7 +642,7 @@ var BottomSheet = class extends HTMLElement {
 	hide() {
 		const _ = this;
 		if (_.panel?.hide() === false) {
-			if (_.dialog) {
+			if (_.dialog && _.#springTarget === null) {
 				_.dialog.classList.add("transitioning");
 				_.dialog.style.transform = "";
 			}
@@ -651,6 +655,28 @@ var BottomSheet = class extends HTMLElement {
 			_.dialog.classList.remove("snapping");
 		}
 		return true;
+	}
+	/**
+	* Hands the sheet back to the panel for a close it did not start.
+	*
+	* Idempotent by construction — stopping a stopped spring, clearing a cleared
+	* transform and removing an absent class are all no-ops — because a close
+	* that does come through hide() fires `beforeHide` as well and runs this a
+	* second time.
+	*
+	* `transitioning` is deliberately left alone: the [state='hiding'] rule
+	* carries its own transition, and removing the class mid-close would strand
+	* a snap-back that was already running under it.
+	*/
+	#teardownForClose() {
+		const _ = this;
+		_.#stopSpring();
+		for (const gesture of _.#gestures) gesture.cancel();
+		_.#drag = { active: false };
+		if (_.dialog) {
+			_.dialog.style.transform = "";
+			_.dialog.classList.remove("snapping");
+		}
 	}
 	connectedCallback() {
 		const _ = this;
@@ -666,8 +692,8 @@ var BottomSheet = class extends HTMLElement {
 			};
 			_.content.addEventListener("touchmove", _.#scrollVeto, { passive: false });
 		}
-		_.#backdropBound = false;
 		_.#panelRef?.addEventListener("beforeShow", _.#handlers.beforeShow);
+		_.#panelRef?.addEventListener("beforeHide", _.#handlers.beforeHide);
 		if (_.#dialogRef) _.#dialogRef.addEventListener("transitionend", _.#handlers.transitionEnd);
 		_.#applyRestingHeight();
 	}
@@ -678,12 +704,12 @@ var BottomSheet = class extends HTMLElement {
 		_.#gestures = [];
 		if (_.content && _.#scrollVeto) _.content.removeEventListener("touchmove", _.#scrollVeto);
 		_.#scrollVeto = null;
-		_.#backdropBound = false;
 		_.#drag = { active: false };
 		_.#stopSpring();
 		_.#engine?.removeAllListeners();
 		_.#engine = null;
 		_.#panelRef?.removeEventListener("beforeShow", _.#handlers.beforeShow);
+		_.#panelRef?.removeEventListener("beforeHide", _.#handlers.beforeHide);
 		if (_.#dialogRef) _.#dialogRef.removeEventListener("transitionend", _.#handlers.transitionEnd);
 		_.#panelRef = null;
 		_.#dialogRef = null;
@@ -710,12 +736,12 @@ var BottomSheet = class extends HTMLElement {
 	#surfaceCallbacks(surface) {
 		const _ = this;
 		return {
-			onStart: () => _.#dragStart(surface),
+			onStart: () => _.#dragStart(),
 			onMove: (info) => _.#dragMove(surface, info),
 			onEnd: (info) => _.#dragEnd(surface, info)
 		};
 	}
-	#dragStart(surface) {
+	#dragStart() {
 		const _ = this;
 		const state = _.panel?.getAttribute("state");
 		if (_.panel?.hasAttribute("morph") && (state === "showing" || state === "hiding")) return;
@@ -726,7 +752,6 @@ var BottomSheet = class extends HTMLElement {
 		_.#drag = {
 			active: true,
 			claimed: false,
-			surface,
 			claimOffset: 0,
 			startHeight,
 			belowLowest: 0
@@ -813,15 +838,11 @@ var BottomSheet = class extends HTMLElement {
 			dialog.style.transform = `translate3d(0, ${-resisted}px, 0)`;
 		} else dialog.style.transform = `translate3d(0, ${travel}px, 0)`;
 	}
-	#dragEnd(surface, { deltaY, velocityY, duration, cancelled }) {
+	#dragEnd(surface, { deltaY, velocityY, cancelled }) {
 		const _ = this;
 		const drag = _.#drag;
 		if (!drag.active) return;
 		_.#drag = { active: false };
-		if (surface === "backdrop" && !cancelled && Math.abs(deltaY) < 10 && duration < 300) {
-			_.hide();
-			return;
-		}
 		_.dialog?.classList.add("transitioning");
 		if (!drag.claimed) {
 			_.#applyRestingHeight();
@@ -877,12 +898,13 @@ var BottomSheet = class extends HTMLElement {
 		const _ = this;
 		const from = _.#activeSnap;
 		const dialog = _.dialog;
-		if (dialog && _.#springEnabled) {
-			const startPx = dialog.getBoundingClientRect().height;
+		const targetPx = value / 100 * window.innerHeight;
+		const startPx = dialog?.getBoundingClientRect().height ?? targetPx;
+		const heightAtTarget = Math.abs(startPx - targetPx) <= 1;
+		if (dialog && _.#springEnabled && !heightAtTarget) {
 			const engine = _.#ensureEngine();
 			dialog.classList.remove("transitioning", "snapping");
 			dialog.style.transform = "";
-			const targetPx = value / 100 * window.innerHeight;
 			_.#springTarget = targetPx;
 			const seed = -velocityY * FRAME_MS * VELOCITY_BOOST;
 			engine.animateTo(startPx, targetPx, seed);
@@ -911,21 +933,9 @@ var BottomSheet = class extends HTMLElement {
 		if (e.target === this.dialog && (e.propertyName === "transform" || e.propertyName === "height")) this.dialog.classList.remove("transitioning", "snapping");
 	}
 };
-var BottomSheetContent = class extends HTMLElement {
-	constructor() {
-		super();
-	}
-};
-var BottomSheetHeader = class extends HTMLElement {
-	constructor() {
-		super();
-	}
-};
-var BottomSheetFooter = class extends HTMLElement {
-	constructor() {
-		super();
-	}
-};
+var BottomSheetContent = class extends HTMLElement {};
+var BottomSheetHeader = class extends HTMLElement {};
+var BottomSheetFooter = class extends HTMLElement {};
 if (!customElements.get("bottom-sheet")) customElements.define("bottom-sheet", BottomSheet);
 if (!customElements.get("bottom-sheet-content")) customElements.define("bottom-sheet-content", BottomSheetContent);
 if (!customElements.get("bottom-sheet-header")) customElements.define("bottom-sheet-header", BottomSheetHeader);
