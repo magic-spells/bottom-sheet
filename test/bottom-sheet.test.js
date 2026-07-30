@@ -58,6 +58,7 @@ globalThis.customElements = {
 globalThis.window = Object.assign(new EventTarget(), {
 	innerHeight: 1000,
 	innerWidth: 400,
+	getComputedStyle: (element) => element.style,
 });
 
 // Frames are collected rather than run, which is what makes a settle
@@ -111,7 +112,7 @@ afterEach(() => {
  */
 function makeDialog(restingHeight = 400) {
 	const classes = new Set();
-	return {
+	return Object.assign(new EventTarget(), {
 		classes,
 		classList: {
 			add: (...names) => names.forEach((name) => classes.add(name)),
@@ -119,8 +120,6 @@ function makeDialog(restingHeight = 400) {
 			contains: (name) => classes.has(name),
 		},
 		style: {},
-		addEventListener() {},
-		removeEventListener() {},
 		getBoundingClientRect() {
 			const parsed = parseFloat(this.style.height);
 			return {
@@ -128,7 +127,7 @@ function makeDialog(restingHeight = 400) {
 					this.style.height?.endsWith('px') && Number.isFinite(parsed) ? parsed : restingHeight,
 			};
 		},
-	};
+	});
 }
 
 /**
@@ -245,6 +244,12 @@ function pointerHold(surface, path) {
 	for (const y of path.slice(1)) surface.listeners.get('pointermove')(event(y));
 
 	return (y) => surface.listeners.get('pointermove')(event(y));
+}
+
+function dispatchTransitionEnd(dialog, propertyName) {
+	const event = new Event('transitionend');
+	Object.defineProperty(event, 'propertyName', { value: propertyName });
+	dialog.dispatchEvent(event);
 }
 
 test('unparseable snap-points are removed while valid points remain reflected', () => {
@@ -383,6 +388,39 @@ test('an accepted close reports true and drops the snap pacing', () => {
 	assert.equal(dialog.classList.contains('snapping'), false);
 });
 
+test('grabbing an opening sheet pins its painted transform before dropping transitions', () => {
+	const { dialog, header } = makeSheet({ snapPoints: [] });
+	dialog.classList.add('transitioning', 'snapping');
+
+	const getComputedStyle = window.getComputedStyle;
+	window.getComputedStyle = () => ({ transform: 'matrix(1, 0, 0, 1, 0, 240)' });
+	try {
+		header.listeners.get('pointerdown')({
+			pointerId: 1,
+			isPrimary: true,
+			clientY: 0,
+			timeStamp: FRAME_MS,
+		});
+	} finally {
+		window.getComputedStyle = getComputedStyle;
+	}
+
+	assert.equal(dialog.style.transform, 'matrix(1, 0, 0, 1, 0, 240)');
+	assert.equal(dialog.classList.contains('transitioning'), false);
+	assert.equal(dialog.classList.contains('snapping'), false);
+});
+
+test('an unclaimed release clears the opening transform pin and re-arms its transition', () => {
+	const { dialog, header } = makeSheet({ snapPoints: [] });
+	dialog.style.transform = 'matrix(1, 0, 0, 1, 0, 240)';
+	dialog.classList.add('transitioning');
+
+	pointerDrag(header, [0]);
+
+	assert.equal(dialog.style.transform, '');
+	assert.equal(dialog.classList.contains('transitioning'), true);
+});
+
 /**
  * Absolute pointer positions for a drag down and an optional reversal.
  * Steps stay small because claimOffset is recorded on the first move, so a
@@ -443,6 +481,20 @@ test('a downward flick below the shortest snap dismisses', () => {
 	pointerDrag(header, path(120, 0, 20));
 
 	assert.equal(panel.hideCalls, 1);
+});
+
+test('a late settle height transition cannot cancel an active close transition', () => {
+	const { dialog, panel } = makeSheet({ snapPoints: [40, 70] });
+	dialog.classList.add('transitioning', 'snapping');
+	panel.state = 'hiding';
+
+	dispatchTransitionEnd(dialog, 'height');
+	assert.equal(dialog.classList.contains('transitioning'), true);
+	assert.equal(dialog.classList.contains('snapping'), true);
+
+	dispatchTransitionEnd(dialog, 'transform');
+	assert.equal(dialog.classList.contains('transitioning'), false);
+	assert.equal(dialog.classList.contains('snapping'), false);
 });
 
 /* ---- Parent-driven closes ----
