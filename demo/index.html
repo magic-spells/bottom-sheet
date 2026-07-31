@@ -53,7 +53,12 @@
 				--bs-panel-background: #171012;
 				--bs-panel-max-height: 85vh;
 				--bs-panel-border-radius: 25px;
-				--bs-panel-box-shadow: 0 -18px 70px rgba(0, 0, 0, 0.55);
+				/* Inset hairline first — a 1px catch-light along the top edge that
+				   follows the corner radius, so the sheet reads as lit from above
+				   rather than as a flat cut-out. The header has no background of
+				   its own, so nothing paints over it. */
+				--bs-panel-box-shadow:
+					inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 -10px 36px rgba(0, 0, 0, 0.3);
 				--bs-handle-color: #9a6a5a;
 				--bs-handle-width: 50px;
 				--bs-handle-height: 5px;
@@ -64,6 +69,18 @@
 				--bs-transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
 				--bs-overlay-background: rgba(5, 2, 3, 0.72);
 				--bs-overlay-blur: 6px;
+			}
+
+			/* ------------------------------------------------
+			   Frosted-glass scrim (demo-only — matches the
+			   dialog-panel demo; consumers can layer the same
+			   noise + saturate onto the ::backdrop scrim)
+			------------------------------------------------ */
+			dialog-panel:has(bottom-sheet) > dialog::backdrop {
+				backdrop-filter: blur(var(--bs-overlay-blur)) saturate(115%);
+				-webkit-backdrop-filter: blur(var(--bs-overlay-blur)) saturate(115%);
+				background-image: url('./bg-noise.png');
+				background-size: 50px 50px;
 			}
 
 			* {
@@ -87,12 +104,17 @@
 				-webkit-font-smoothing: antialiased;
 			}
 
-			/* ---- Noise overlay ---- */
+			/* ---- Noise overlay ----
+			   Modest z-index on purpose: above page content and the scrim (1000),
+			   but an extreme value here pins a viewport-sized fixed layer at the
+			   top of the stacking order and invites the compositor re-sort/tile
+			   jank the packages just fixed. The top layer beats any z-index, so a
+			   huge value never covered open dialogs anyway. */
 			body::before {
 				content: '';
 				position: fixed;
 				inset: 0;
-				z-index: 99999999;
+				z-index: 2000;
 				pointer-events: none;
 				opacity: 0.025;
 				background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
