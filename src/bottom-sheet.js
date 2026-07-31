@@ -603,6 +603,23 @@ class BottomSheet extends HTMLElement {
 			dialog.style.height = `${startHeight}px`;
 		}
 
+		const computedTransform =
+			dialog && typeof window.getComputedStyle === 'function'
+				? window.getComputedStyle(dialog).transform
+				: '';
+		const normalizedTransform = computedTransform?.replace(/\s+/g, '');
+		if (
+			dialog &&
+			computedTransform &&
+			![
+				'none',
+				'matrix(1,0,0,1,0,0)',
+				'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)',
+			].includes(normalizedTransform)
+		) {
+			dialog.style.transform = computedTransform;
+		}
+
 		_.#drag = {
 			active: true,
 			claimed: false,
@@ -734,9 +751,9 @@ class BottomSheet extends HTMLElement {
 		_.dialog?.classList.add('transitioning');
 
 		if (!drag.claimed) {
-			// A press that never became a drag still pinned the height, so hand
-			// it back to the resting snap. That both restores dvh and lets a
-			// settle the press interrupted finish on its own.
+			// A press that never became a drag still pinned the painted height
+			// and transform, so hand both back to their CSS destinations.
+			if (_.dialog) _.dialog.style.transform = '';
 			_.#applyRestingHeight();
 			return;
 		}
@@ -874,11 +891,17 @@ class BottomSheet extends HTMLElement {
 	 * @param {TransitionEvent} e - The transition event
 	 */
 	#handleTransitionEnd(e) {
+		const _ = this;
 		if (
-			e.target === this.dialog &&
+			e.target === _.dialog &&
 			(e.propertyName === 'transform' || e.propertyName === 'height')
 		) {
-			this.dialog.classList.remove('transitioning', 'snapping');
+			// A settle's height event can arrive after hiding starts; its
+			// cleanup must not cancel the close's transform transition.
+			if (e.propertyName === 'height' && _.panel?.getAttribute('state') === 'hiding') {
+				return;
+			}
+			_.dialog.classList.remove('transitioning', 'snapping');
 		}
 	}
 }

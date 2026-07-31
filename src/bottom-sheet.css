@@ -186,35 +186,38 @@ dialog-panel[state='hiding']:has(bottom-sheet[inset]) > dialog {
 	);
 }
 
-/* Override backdrop styles */
+/* Single-backdrop architecture: the native ::backdrop IS the scrim. It lives
+   in the top layer, created and destroyed with the dialog — one viewport
+   surface, so showModal()'s insertion has no second glass layer to re-sort
+   against (the intermittent open-flicker class fixed across the family).
+   The CSS path keeps the dialog open until the exit transition completes, so
+   the scrim fades out fully before close(). Clicks on ::backdrop still
+   report the dialog as their target — outside-tap dismissal is unchanged.
+
+   The old backdrop-filter:none toggles are gone on purpose: a closed dialog
+   has no ::backdrop at all, and the blur now holds through the exit fade
+   instead of popping off at hide-start. */
 dialog-panel:has(bottom-sheet) > dialog-backdrop {
+	display: none;
+}
+
+dialog-panel:has(bottom-sheet) > dialog::backdrop {
 	background: var(--bs-overlay-background);
 	/* No hand-written -webkit- prefix. Lightning CSS collapses a manually
 	   paired property to the last declaration and re-prefixes from
 	   browserslist — spelling both drops the standard one entirely. */
 	backdrop-filter: blur(var(--bs-overlay-blur));
-}
-
-dialog-panel[state='showing']:has(bottom-sheet) > dialog-backdrop,
-dialog-panel[state='hidden']:has(bottom-sheet) > dialog-backdrop {
 	opacity: 0;
-	backdrop-filter: none;
 }
 
-dialog-panel[state='shown']:has(bottom-sheet) > dialog-backdrop {
+dialog-panel[state='shown']:has(bottom-sheet) > dialog::backdrop {
 	opacity: 1;
 	transition: opacity var(--bs-transition-duration) var(--bs-transition-timing);
 }
 
-dialog-panel[state='hiding']:has(bottom-sheet) > dialog-backdrop {
+dialog-panel[state='hiding']:has(bottom-sheet) > dialog::backdrop {
 	opacity: 0;
-	backdrop-filter: none;
 	transition: opacity var(--bs-transition-duration) var(--bs-transition-timing);
-}
-
-/* Make native ::backdrop transparent (custom backdrop handles it) */
-dialog-panel:has(bottom-sheet) > dialog::backdrop {
-	background: transparent;
 }
 
 /* Bottom sheet fills the dialog */
