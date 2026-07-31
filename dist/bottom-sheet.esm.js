@@ -749,6 +749,13 @@ var BottomSheet = class extends HTMLElement {
 		const dialog = _.dialog;
 		const startHeight = dialog?.getBoundingClientRect().height ?? 0;
 		if (dialog && _.#snapPoints.length) dialog.style.height = `${startHeight}px`;
+		const computedTransform = dialog && typeof window.getComputedStyle === "function" ? window.getComputedStyle(dialog).transform : "";
+		const normalizedTransform = computedTransform?.replace(/\s+/g, "");
+		if (dialog && computedTransform && ![
+			"none",
+			"matrix(1,0,0,1,0,0)",
+			"matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)"
+		].includes(normalizedTransform)) dialog.style.transform = computedTransform;
 		_.#drag = {
 			active: true,
 			claimed: false,
@@ -845,6 +852,7 @@ var BottomSheet = class extends HTMLElement {
 		_.#drag = { active: false };
 		_.dialog?.classList.add("transitioning");
 		if (!drag.claimed) {
+			if (_.dialog) _.dialog.style.transform = "";
 			_.#applyRestingHeight();
 			return;
 		}
@@ -930,7 +938,11 @@ var BottomSheet = class extends HTMLElement {
 	* @param {TransitionEvent} e - The transition event
 	*/
 	#handleTransitionEnd(e) {
-		if (e.target === this.dialog && (e.propertyName === "transform" || e.propertyName === "height")) this.dialog.classList.remove("transitioning", "snapping");
+		const _ = this;
+		if (e.target === _.dialog && (e.propertyName === "transform" || e.propertyName === "height")) {
+			if (e.propertyName === "height" && _.panel?.getAttribute("state") === "hiding") return;
+			_.dialog.classList.remove("transitioning", "snapping");
+		}
 	}
 };
 var BottomSheetContent = class extends HTMLElement {};
