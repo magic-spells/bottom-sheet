@@ -54,4 +54,28 @@ const resolveSnapTarget = ({ currentPx, velocityY, snapsPx, flickVelocity }) => 
 	);
 };
 
-export { parseSnapPoints, resolveSnapTarget, SNAP_EPSILON };
+/**
+ * Maps a visible extent onto dismissal progress, which is what the scrim tracks.
+ *
+ * One clamp covers every case. `restExtent` is the sheet's resting extent — the
+ * SHORTEST snap on a snapping sheet, the panel height on a binary one — so any
+ * position at or above rest saturates at exactly 1, and only travel below it
+ * maps [rest -> off screen] onto [1 -> 0]. That is what leaves snap-to-snap
+ * travel and upward rubber-band overscroll alone without a single branch: a
+ * resize is not a dismissal, and only the gesture past the shortest snap is.
+ *
+ * A degenerate rest extent returns 1, not 0. An unmeasurable sheet is a sheet
+ * that has not laid out yet, and blanking the scrim is a far worse answer than
+ * leaving it alone.
+ * @param {number} visibleExtent - On-screen height along the dismiss axis, in pixels
+ * @param {number} restExtent - Resting height in pixels
+ * @returns {number} Progress in [0, 1]; 1 means fully on screen
+ */
+const dismissProgress = (visibleExtent, restExtent) => {
+	if (!Number.isFinite(restExtent) || restExtent <= 0) return 1;
+	if (!Number.isFinite(visibleExtent)) return 1;
+
+	return Math.min(1, Math.max(0, visibleExtent / restExtent));
+};
+
+export { parseSnapPoints, resolveSnapTarget, dismissProgress, SNAP_EPSILON };

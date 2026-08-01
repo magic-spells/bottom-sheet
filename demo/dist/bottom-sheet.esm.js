@@ -338,6 +338,28 @@ var resolveSnapTarget = ({ currentPx, velocityY, snapsPx, flickVelocity }) => {
 	if (velocityY < -flickVelocity) return snapsPx.find((px) => px > currentPx + 1) ?? snapsPx[snapsPx.length - 1];
 	return snapsPx.reduce((best, px) => Math.abs(px - currentPx) < Math.abs(best - currentPx) ? px : best);
 };
+/**
+* Maps a visible extent onto dismissal progress, which is what the scrim tracks.
+*
+* One clamp covers every case. `restExtent` is the sheet's resting extent — the
+* SHORTEST snap on a snapping sheet, the panel height on a binary one — so any
+* position at or above rest saturates at exactly 1, and only travel below it
+* maps [rest -> off screen] onto [1 -> 0]. That is what leaves snap-to-snap
+* travel and upward rubber-band overscroll alone without a single branch: a
+* resize is not a dismissal, and only the gesture past the shortest snap is.
+*
+* A degenerate rest extent returns 1, not 0. An unmeasurable sheet is a sheet
+* that has not laid out yet, and blanking the scrim is a far worse answer than
+* leaving it alone.
+* @param {number} visibleExtent - On-screen height along the dismiss axis, in pixels
+* @param {number} restExtent - Resting height in pixels
+* @returns {number} Progress in [0, 1]; 1 means fully on screen
+*/
+var dismissProgress = (visibleExtent, restExtent) => {
+	if (!Number.isFinite(restExtent) || restExtent <= 0) return 1;
+	if (!Number.isFinite(visibleExtent)) return 1;
+	return Math.min(1, Math.max(0, visibleExtent / restExtent));
+};
 //#endregion
 //#region src/bottom-sheet.js
 var FRAME_MS = 16.66;
@@ -370,6 +392,7 @@ var BottomSheet = class extends HTMLElement {
 	#engine = null;
 	#springTarget = null;
 	#reflectingSnap = false;
+	#backdropProgress = null;
 	#panelRef = null;
 	#dialogRef = null;
 	/**
@@ -609,6 +632,8 @@ var BottomSheet = class extends HTMLElement {
 			beforeShow: () => {
 				_.#applyRestingHeight();
 				_.dialog?.classList.remove("snapping");
+				_.dialog?.classList.remove("dragging");
+				_.#syncBackdrop(null);
 				_.dialog?.classList.add("transitioning");
 			},
 			beforeHide: () => {
@@ -647,13 +672,17 @@ var BottomSheet = class extends HTMLElement {
 				_.dialog.style.transform = "";
 			}
 			if (_.#springTarget === null) _.#applyRestingHeight();
+			_.dialog?.classList.remove("dragging");
+			_.#syncBackdrop(null);
 			return false;
 		}
 		_.#stopSpring();
 		if (_.dialog) {
 			_.dialog.style.transform = "";
 			_.dialog.classList.remove("snapping");
+			_.dialog.classList.remove("dragging");
 		}
+		_.#syncBackdrop(null);
 		return true;
 	}
 	/**
@@ -676,7 +705,9 @@ var BottomSheet = class extends HTMLElement {
 		if (_.dialog) {
 			_.dialog.style.transform = "";
 			_.dialog.classList.remove("snapping");
+			_.dialog.classList.remove("dragging");
 		}
+		_.#syncBackdrop(null);
 	}
 	connectedCallback() {
 		const _ = this;
@@ -705,6 +736,9 @@ var BottomSheet = class extends HTMLElement {
 		if (_.content && _.#scrollVeto) _.content.removeEventListener("touchmove", _.#scrollVeto);
 		_.#scrollVeto = null;
 		_.#drag = { active: false };
+		_.#backdropProgress = null;
+		_.#dialogRef?.style.removeProperty("--bs-backdrop-progress");
+		_.#dialogRef?.classList.remove("dragging");
 		_.#stopSpring();
 		_.#engine?.removeAllListeners();
 		_.#engine = null;
@@ -725,6 +759,39 @@ var BottomSheet = class extends HTMLElement {
 		if (_.#springTarget !== null) return;
 		const snap = _.#activeSnap;
 		dialog.style.height = snap === null ? "" : `${snap}dvh`;
+	}
+	/**
+	* Publishes how much of the sheet is still on screen as
+	* `--bs-backdrop-progress`, which the scrim reads for its opacity.
+	*
+	* Written on the dialog and reaching `::backdrop` by inheritance. The
+	* saturated case deliberately REMOVES the token rather than writing `1`: an
+	* absent token and the CSS fallback say the same thing, and a custom property
+	* is inherited, so every write invalidates the dialog's whole subtree — which
+	* is the consumer's scrolling list. Skipping it keeps snap-to-snap travel,
+	* upward overscroll, and rest entirely off that path.
+	*
+	* Only a live drag calls this. A spring settle never needs to: the engine
+	* only runs when there is height left to travel, and height travel only
+	* exists at or above the shortest snap, where progress is pinned at 1. A
+	* release from below that snap has no height left and takes the CSS clock
+	* (see #commitSnap's heightAtTarget), so there is nothing here to animate.
+	* @param {number|null} progress - Dismissal progress, or null to clear
+	*/
+	#syncBackdrop(progress) {
+		const _ = this;
+		const dialog = _.dialog;
+		if (!dialog) return;
+		if (progress === null || !(progress < 1)) {
+			if (_.#backdropProgress === null) return;
+			_.#backdropProgress = null;
+			dialog.style.removeProperty("--bs-backdrop-progress");
+			return;
+		}
+		const value = Math.max(0, progress).toFixed(3);
+		if (value === _.#backdropProgress) return;
+		_.#backdropProgress = value;
+		dialog.style.setProperty("--bs-backdrop-progress", value);
 	}
 	/**
 	* Resolves the declared snaps to pixels against the current viewport
@@ -763,7 +830,7 @@ var BottomSheet = class extends HTMLElement {
 			startHeight,
 			belowLowest: 0
 		};
-		dialog?.classList.remove("transitioning", "snapping");
+		dialog?.classList.remove("transitioning", "snapping", "dragging");
 	}
 	/**
 	* Applies resistance to a drag value to create a rubber-band effect
@@ -797,6 +864,7 @@ var BottomSheet = class extends HTMLElement {
 			if (!_.#shouldClaim(surface, moveY)) return;
 			drag.claimed = true;
 			drag.claimOffset = deltaY;
+			_.dialog?.classList.add("dragging");
 		}
 		const travel = deltaY - drag.claimOffset;
 		if (_.#snapPoints.length) _.#moveBySnap(travel);
@@ -819,6 +887,7 @@ var BottomSheet = class extends HTMLElement {
 			dialog.style.height = `${maxPx + _.#applyResistance(height - maxPx)}px`;
 			dialog.style.transform = "";
 			_.#drag.belowLowest = 0;
+			_.#syncBackdrop(1);
 			return;
 		}
 		if (height < minPx) {
@@ -826,11 +895,13 @@ var BottomSheet = class extends HTMLElement {
 			dialog.style.height = `${minPx}px`;
 			dialog.style.transform = `translate3d(0, ${below}px, 0)`;
 			_.#drag.belowLowest = below;
+			_.#syncBackdrop(dismissProgress(minPx - below, minPx));
 			return;
 		}
 		dialog.style.height = `${height}px`;
 		dialog.style.transform = "";
 		_.#drag.belowLowest = 0;
+		_.#syncBackdrop(1);
 	}
 	/**
 	* Drives a binary sheet by transform alone
@@ -843,7 +914,11 @@ var BottomSheet = class extends HTMLElement {
 		if (travel < 0) {
 			const resisted = _.#applyResistance(-travel);
 			dialog.style.transform = `translate3d(0, ${-resisted}px, 0)`;
-		} else dialog.style.transform = `translate3d(0, ${travel}px, 0)`;
+			_.#syncBackdrop(1);
+		} else {
+			dialog.style.transform = `translate3d(0, ${travel}px, 0)`;
+			_.#syncBackdrop(dismissProgress(_.#drag.startHeight - travel, _.#drag.startHeight));
+		}
 	}
 	#dragEnd(surface, { deltaY, velocityY, cancelled }) {
 		const _ = this;
@@ -851,6 +926,8 @@ var BottomSheet = class extends HTMLElement {
 		if (!drag.active) return;
 		_.#drag = { active: false };
 		_.dialog?.classList.add("transitioning");
+		_.dialog?.classList.remove("dragging");
+		_.#syncBackdrop(null);
 		if (!drag.claimed) {
 			if (_.dialog) _.dialog.style.transform = "";
 			_.#applyRestingHeight();

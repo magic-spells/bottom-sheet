@@ -186,22 +186,21 @@ dialog-panel[state='hiding']:has(bottom-sheet[inset]) > dialog {
 	);
 }
 
-/* Single-backdrop architecture: the native ::backdrop IS the scrim. It lives
-   in the top layer, created and destroyed with the dialog — one viewport
-   surface, so showModal()'s insertion has no second glass layer to re-sort
-   against (the intermittent open-flicker class fixed across the family).
+/* Single-overlay architecture: <dialog-backdrop> is the component family's ONE
+   overlay surface, shared with sheet and dialog-panel. Styling an overlay is
+   therefore the same job in every package, and attaching a morph engine later
+   needs no CSS rewrite — a proxy engine flies its blob in normal flow, and only
+   an element can sit beneath that. dialog-panel keeps the native ::backdrop
+   transparent for every panel, so nothing has to be neutralised here.
+
    The CSS path keeps the dialog open until the exit transition completes, so
-   the scrim fades out fully before close(). Clicks on ::backdrop still
-   report the dialog as their target — outside-tap dismissal is unchanged.
+   the scrim fades out fully before close(). Clicks land on dialog-backdrop,
+   whose own handler routes to panel.hide() — outside-tap dismissal is
+   unchanged.
 
-   The old backdrop-filter:none toggles are gone on purpose: a closed dialog
-   has no ::backdrop at all, and the blur now holds through the exit fade
-   instead of popping off at hide-start. */
+   The old backdrop-filter:none toggles stay gone: the blur holds through the
+   exit fade instead of popping off at hide-start. */
 dialog-panel:has(bottom-sheet) > dialog-backdrop {
-	display: none;
-}
-
-dialog-panel:has(bottom-sheet) > dialog::backdrop {
 	background: var(--bs-overlay-background);
 	/* No hand-written -webkit- prefix. Lightning CSS collapses a manually
 	   paired property to the last declaration and re-prefixes from
@@ -210,14 +209,41 @@ dialog-panel:has(bottom-sheet) > dialog::backdrop {
 	opacity: 0;
 }
 
-dialog-panel[state='shown']:has(bottom-sheet) > dialog::backdrop {
-	opacity: 1;
+/* The scrim tracks the DISMISSAL, not the drag. `--bs-backdrop-progress` is
+   written by the component and only ever falls below 1 once the sheet is past
+   the point where it stops resizing and starts leaving the screen — below the
+   shortest snap, or anywhere on the downward travel of a sheet with no snaps.
+   Snap-to-snap travel and upward rubber-band overscroll never write it at all,
+   so the fallback here is what holds the overlay steady through them.
+
+   The fallback is also the whole degradation story: if the token never arrives,
+   `1` resolves and the scrim behaves exactly as it did before this existed. */
+dialog-panel[state='shown']:has(bottom-sheet) > dialog-backdrop {
+	opacity: var(--bs-backdrop-progress, 1);
 	transition: opacity var(--bs-transition-duration) var(--bs-transition-timing);
+	pointer-events: auto;
 }
 
-dialog-panel[state='hiding']:has(bottom-sheet) > dialog::backdrop {
+/* A claimed gesture owns the scrim frame by frame, and a transition would lag it
+   a full duration behind the finger. Scoped to its own rule rather than dropped
+   from the rule above so an open interrupted by a press still fades in, and so
+   releasing re-arms the transition that carries the scrim back to full. The
+   class sits on the dialog, which is a sibling of the overlay element, so this
+   reaches it through the shared dialog-panel parent. */
+dialog-panel[state='shown']:has(bottom-sheet):has(> dialog.dragging)
+	> dialog-backdrop {
+	transition: none;
+}
+
+/* Deliberately a hard 0 rather than var(--bs-backdrop-progress, 0). The token is
+   always cleared before the state flips, and reading it here would mean any path
+   that ever failed to clear it froze the scrim over a closed sheet. The fade
+   still starts from wherever the drag left the overlay, because a transition
+   interpolates from the value currently painted. */
+dialog-panel[state='hiding']:has(bottom-sheet) > dialog-backdrop {
 	opacity: 0;
 	transition: opacity var(--bs-transition-duration) var(--bs-transition-timing);
+	pointer-events: none;
 }
 
 /* Bottom sheet fills the dialog */

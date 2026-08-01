@@ -215,6 +215,38 @@ Set these on `:root`, a panel, or another ancestor.
 | `--bs-overlay-background` | `rgba(0, 0, 0, 0.5)` | Backdrop fill |
 | `--bs-overlay-blur` | `5px` | Backdrop blur |
 
+### Backdrop progress
+
+The overlay fades with the sheet as you drag it away, and the component publishes
+that number so you can drive your own effects from it.
+
+| Property | Range | Description |
+| --- | --- | --- |
+| `--bs-backdrop-progress` | `1` → `0` | **Written by the component; do not set it.** How much of the sheet is still on screen. Set on the `<dialog>`, so it is readable from the `::backdrop` and from anything inside the sheet |
+
+It tracks the **dismissal**, not the drag. On a sheet with `snap-points` it stays
+at `1` for all snap-to-snap travel — shrinking from `90` to `40` is a resize, not
+a departure — and only starts falling once the sheet drops below the *shortest*
+snap and begins leaving the viewport. A sheet with no snap points has no resize
+to do, so its whole downward drag counts. Upward rubber-band overscroll never
+lightens the overlay.
+
+The token is only present while it is below `1`; the rest of the time the
+component removes it and the `var()` fallback of `1` stands in, which is what
+keeps a snap-to-snap drag from invalidating the sheet's subtree on every frame.
+So always read it with that fallback:
+
+```css
+/* Fade the sheet's own content out as it leaves, leaving the panel behind */
+dialog-panel:has(bottom-sheet) > dialog bottom-sheet-content {
+	opacity: var(--bs-backdrop-progress, 1);
+}
+```
+
+Where a browser does not yet inherit custom properties into `::backdrop`, the
+token never reaches the overlay, the fallback resolves, and the scrim simply
+fades on its own clock the way it always has.
+
 ```css
 :root {
 	--bs-panel-background: #171012;

@@ -1,7 +1,12 @@
 import './bottom-sheet.css';
 import PhysicsEngine from '@magic-spells/physics-engine';
 import { DragGesture } from './drag-gesture.js';
-import { parseSnapPoints, resolveSnapTarget, SNAP_EPSILON } from './snap-points.js';
+import {
+	parseSnapPoints,
+	resolveSnapTarget,
+	dismissProgress,
+	SNAP_EPSILON,
+} from './snap-points.js';
 
 // PhysicsEngine integrates once per 60fps frame — its `velocity` is units per
 // frame, not per millisecond. DragGesture reports px/ms, so every release
@@ -54,9 +59,14 @@ class BottomSheet extends HTMLElement {
 	// is not mistaken for an author retargeting the sheet mid-settle.
 	#reflectingSnap = false;
 
+	// Last value written to --bs-backdrop-progress, so a frame that computes the
+	// same number does not touch the DOM. null means the token is absent.
+	#backdropProgress = null;
+
 	// cached references for reliable cleanup in disconnectedCallback
 	#panelRef = null;
 	#dialogRef = null;
+	#backdropRef = null;
 
 	/**
 	 * Define which attributes should be observed for changes
@@ -82,8 +92,7 @@ class BottomSheet extends HTMLElement {
 			} else {
 				const trimmed = newValue.trim();
 				const parsed = Number(trimmed);
-				_.maxDisplayWidth =
-					trimmed === '' || !Number.isFinite(parsed) ? Infinity : parsed;
+				_.maxDisplayWidth = trimmed === '' || !Number.isFinite(parsed) ? Infinity : parsed;
 			}
 			return;
 		}
@@ -367,6 +376,10 @@ class BottomSheet extends HTMLElement {
 				// An open travels the full sheet height, so it keeps the shared
 				// duration even if the last settle was interrupted by the hide.
 				_.dialog?.classList.remove('snapping');
+				// A sheet reopened after a drag-dismiss must fade its scrim in from
+				// nothing, not resume the progress the dismissing drag ended on.
+				_.dialog?.classList.remove('dragging');
+				_.#syncBackdrop(null);
 				_.dialog?.classList.add('transitioning');
 			},
 			// Escape, a backdrop tap and every [data-action-hide-dialog] button
@@ -421,6 +434,10 @@ class BottomSheet extends HTMLElement {
 				_.dialog.style.transform = '';
 			}
 			if (_.#springTarget === null) _.#applyRestingHeight();
+			// The sheet is staying, so the scrim goes back to full whichever way
+			// the height was resolved above.
+			_.dialog?.classList.remove('dragging');
+			_.#syncBackdrop(null);
 			return false;
 		}
 
@@ -433,7 +450,11 @@ class BottomSheet extends HTMLElement {
 			// A dismiss is a close, not a settle. Left on, this would outrank
 			// the hiding rule and close the sheet at the snap duration.
 			_.dialog.classList.remove('snapping');
+			// Hand the scrim to the [state='hiding'] rule, which fades it the rest
+			// of the way from wherever the drag left it.
+			_.dialog.classList.remove('dragging');
 		}
+		_.#syncBackdrop(null);
 		return true;
 	}
 
@@ -467,7 +488,11 @@ class BottomSheet extends HTMLElement {
 			// Left on, the snap pacing outranks the hiding rule and the close
 			// silently runs at the settle's duration.
 			_.dialog.classList.remove('snapping');
+			_.dialog.classList.remove('dragging');
 		}
+		// An Escape or backdrop tap mid-drag leaves the token wherever the last
+		// move wrote it, and the hiding rule would then fade from the wrong place.
+		_.#syncBackdrop(null);
 	}
 
 	connectedCallback() {
@@ -476,6 +501,10 @@ class BottomSheet extends HTMLElement {
 		// Cache references so disconnectedCallback can reliably unbind
 		_.#panelRef = _.panel;
 		_.#dialogRef = _.dialog;
+		// dialog-panel creates the overlay in its own connectedCallback, and it is
+		// the ancestor, so it has always upgraded by the time this runs. Resolved
+		// lazily anyway in #syncBackdrop, for a sheet moved into a panel later.
+		_.#backdropRef = _.backdrop;
 
 		window.addEventListener('resize', _.#handlers.windowResize);
 
@@ -527,6 +556,11 @@ class BottomSheet extends HTMLElement {
 		}
 		_.#scrollVeto = null;
 		_.#drag = { active: false };
+		// The memo is keyed to an overlay this element can no longer reach, so a
+		// reconnect must not read it back as "already written".
+		_.#backdropProgress = null;
+		_.#backdropRef?.style.removeProperty('--bs-backdrop-progress');
+		_.#dialogRef?.classList.remove('dragging');
 		// Leaves no rAF loop running against a detached dialog
 		_.#stopSpring();
 		_.#engine?.removeAllListeners();
@@ -541,6 +575,7 @@ class BottomSheet extends HTMLElement {
 
 		_.#panelRef = null;
 		_.#dialogRef = null;
+		_.#backdropRef = null;
 	}
 
 	/**
@@ -558,6 +593,45 @@ class BottomSheet extends HTMLElement {
 
 		const snap = _.#activeSnap;
 		dialog.style.height = snap === null ? '' : `${snap}dvh`;
+	}
+
+	/**
+	 * Publishes how much of the sheet is still on screen as
+	 * `--bs-backdrop-progress`, which the overlay reads for its opacity.
+	 *
+	 * Written directly on the `<dialog-backdrop>` element that consumes it.
+	 * Inheritance is not an option here — the overlay is a SIBLING of the dialog,
+	 * not a descendant — and writing it at the element is also strictly cheaper
+	 * than the old dialog-level write: a custom property invalidates the subtree
+	 * it lands on, and this one has no children, so the consumer's scrolling list
+	 * is off that path entirely rather than merely skipped at saturation.
+	 *
+	 * The saturated case still REMOVES the token rather than writing `1`: an
+	 * absent token and the CSS fallback say the same thing.
+	 *
+	 * Only a live drag calls this. A spring settle never needs to: the engine
+	 * only runs when there is height left to travel, and height travel only
+	 * exists at or above the shortest snap, where progress is pinned at 1. A
+	 * release from below that snap has no height left and takes the CSS clock
+	 * (see #commitSnap's heightAtTarget), so there is nothing here to animate.
+	 * @param {number|null} progress - Dismissal progress, or null to clear
+	 */
+	#syncBackdrop(progress) {
+		const _ = this;
+		const backdrop = (_.#backdropRef ||= _.backdrop);
+		if (!backdrop) return;
+
+		if (progress === null || !(progress < 1)) {
+			if (_.#backdropProgress === null) return;
+			_.#backdropProgress = null;
+			backdrop.style.removeProperty('--bs-backdrop-progress');
+			return;
+		}
+
+		const value = Math.max(0, progress).toFixed(3);
+		if (value === _.#backdropProgress) return;
+		_.#backdropProgress = value;
+		backdrop.style.setProperty('--bs-backdrop-progress', value);
 	}
 
 	/**
@@ -611,11 +685,9 @@ class BottomSheet extends HTMLElement {
 		if (
 			dialog &&
 			computedTransform &&
-			![
-				'none',
-				'matrix(1,0,0,1,0,0)',
-				'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)',
-			].includes(normalizedTransform)
+			!['none', 'matrix(1,0,0,1,0,0)', 'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)'].includes(
+				normalizedTransform
+			)
 		) {
 			dialog.style.transform = computedTransform;
 		}
@@ -629,7 +701,7 @@ class BottomSheet extends HTMLElement {
 			startHeight,
 			belowLowest: 0,
 		};
-		dialog?.classList.remove('transitioning', 'snapping');
+		dialog?.classList.remove('transitioning', 'snapping', 'dragging');
 	}
 
 	/**
@@ -675,6 +747,10 @@ class BottomSheet extends HTMLElement {
 			if (!_.#shouldClaim(surface, moveY)) return;
 			drag.claimed = true;
 			drag.claimOffset = deltaY;
+			// The scrim now follows the finger frame by frame, so its transition
+			// has to come off. Added on the claim rather than at pointerdown, so a
+			// press that never becomes a drag leaves an opening sheet's fade alone.
+			_.dialog?.classList.add('dragging');
 		}
 
 		const travel = deltaY - drag.claimOffset;
@@ -706,6 +782,7 @@ class BottomSheet extends HTMLElement {
 			dialog.style.height = `${maxPx + _.#applyResistance(height - maxPx)}px`;
 			dialog.style.transform = '';
 			_.#drag.belowLowest = 0;
+			_.#syncBackdrop(1);
 			return;
 		}
 
@@ -716,12 +793,17 @@ class BottomSheet extends HTMLElement {
 			dialog.style.height = `${minPx}px`;
 			dialog.style.transform = `translate3d(0, ${below}px, 0)`;
 			_.#drag.belowLowest = below;
+			// The only branch that moves the scrim. Rest is the SHORTEST snap, not
+			// the one the drag started at, so travel between snaps above never
+			// reaches here and never touches the overlay.
+			_.#syncBackdrop(dismissProgress(minPx - below, minPx));
 			return;
 		}
 
 		dialog.style.height = `${height}px`;
 		dialog.style.transform = '';
 		_.#drag.belowLowest = 0;
+		_.#syncBackdrop(1);
 	}
 
 	/**
@@ -736,8 +818,13 @@ class BottomSheet extends HTMLElement {
 		if (travel < 0) {
 			const resisted = _.#applyResistance(-travel);
 			dialog.style.transform = `translate3d(0, ${-resisted}px, 0)`;
+			_.#syncBackdrop(1);
 		} else {
 			dialog.style.transform = `translate3d(0, ${travel}px, 0)`;
+			// A binary sheet has no snaps, so its resting height IS the shortest
+			// one and the whole downward drag is the dismissal zone. Same formula,
+			// no special case.
+			_.#syncBackdrop(dismissProgress(_.#drag.startHeight - travel, _.#drag.startHeight));
 		}
 	}
 
@@ -749,6 +836,13 @@ class BottomSheet extends HTMLElement {
 		_.#drag = { active: false };
 
 		_.dialog?.classList.add('transitioning');
+		// Ordered after `transitioning`: dropping `dragging` re-arms the scrim's
+		// transition, so clearing the token here lets it ride back to full on the
+		// same clock the panel snaps back on. A dismissal reaches [state='hiding']
+		// before anything paints, and that rule carries the fade the rest of the
+		// way down from wherever the drag left it.
+		_.dialog?.classList.remove('dragging');
+		_.#syncBackdrop(null);
 
 		if (!drag.claimed) {
 			// A press that never became a drag still pinned the painted height
@@ -892,10 +986,7 @@ class BottomSheet extends HTMLElement {
 	 */
 	#handleTransitionEnd(e) {
 		const _ = this;
-		if (
-			e.target === _.dialog &&
-			(e.propertyName === 'transform' || e.propertyName === 'height')
-		) {
+		if (e.target === _.dialog && (e.propertyName === 'transform' || e.propertyName === 'height')) {
 			// A settle's height event can arrive after hiding starts; its
 			// cleanup must not cancel the close's transform transition.
 			if (e.propertyName === 'height' && _.panel?.getAttribute('state') === 'hiding') {

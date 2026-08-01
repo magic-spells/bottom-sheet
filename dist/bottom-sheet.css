@@ -129,8 +129,12 @@ dialog-panel:has(bottom-sheet) > dialog::backdrop {
 }
 
 dialog-panel[state="shown"]:has(bottom-sheet) > dialog::backdrop {
-  opacity: 1;
+  opacity: var(--bs-backdrop-progress, 1);
   transition: opacity var(--bs-transition-duration) var(--bs-transition-timing);
+}
+
+dialog-panel[state="shown"]:has(bottom-sheet) > dialog.dragging::backdrop {
+  transition: none;
 }
 
 dialog-panel[state="hiding"]:has(bottom-sheet) > dialog::backdrop {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseSnapPoints, resolveSnapTarget } from '../src/snap-points.js';
+import { parseSnapPoints, resolveSnapTarget, dismissProgress } from '../src/snap-points.js';
 
 const FLICK = 0.5;
 
@@ -88,4 +88,33 @@ test('resolveSnapTarget handles a single declared snap', () => {
 
 test('resolveSnapTarget dismisses when there are no snaps at all', () => {
 	assert.equal(resolve(500, 0, []), null);
+});
+
+test('dismissProgress saturates at and above the resting extent', () => {
+	// Rest is the SHORTEST snap, so every position at or above it reports fully
+	// on screen. This is the whole reason snap-to-snap travel and upward
+	// rubber-band overscroll leave the overlay alone without a branch.
+	assert.equal(dismissProgress(400, 400), 1);
+	assert.equal(dismissProgress(700, 400), 1);
+	assert.equal(dismissProgress(1200, 400), 1);
+});
+
+test('dismissProgress maps the travel below rest linearly onto [1, 0]', () => {
+	assert.equal(dismissProgress(300, 400), 0.75);
+	assert.equal(dismissProgress(200, 400), 0.5);
+	assert.equal(dismissProgress(0, 400), 0);
+});
+
+test('dismissProgress floors at zero past the bottom edge', () => {
+	assert.equal(dismissProgress(-120, 400), 0);
+});
+
+test('dismissProgress reports fully on screen when the extent is unmeasurable', () => {
+	// An unmeasurable sheet is one that has not laid out yet. Reporting 0 would
+	// blank the scrim over a sheet that is plainly visible, so the guard leans
+	// the other way.
+	for (const rest of [0, -400, NaN, Infinity, undefined]) {
+		assert.equal(dismissProgress(300, rest), 1, String(rest));
+	}
+	assert.equal(dismissProgress(NaN, 400), 1);
 });

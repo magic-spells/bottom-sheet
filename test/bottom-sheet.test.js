@@ -112,6 +112,7 @@ afterEach(() => {
  */
 function makeDialog(restingHeight = 400) {
 	const classes = new Set();
+	const props = new Map();
 	return Object.assign(new EventTarget(), {
 		classes,
 		classList: {
@@ -119,7 +120,15 @@ function makeDialog(restingHeight = 400) {
 			remove: (...names) => names.forEach((name) => classes.delete(name)),
 			contains: (name) => classes.has(name),
 		},
-		style: {},
+		// Custom properties live in their own bag rather than on `style` itself,
+		// so `style.height` stays a plain string the way the rest of the suite
+		// reads it. `props` is what the backdrop assertions inspect.
+		props,
+		style: {
+			setProperty: (name, value) => props.set(name, value),
+			removeProperty: (name) => props.delete(name),
+			getPropertyValue: (name) => props.get(name) ?? '',
+		},
 		getBoundingClientRect() {
 			const parsed = parseFloat(this.style.height);
 			return {
@@ -578,4 +587,102 @@ test('beforeShow does not bind a gesture to the inert backdrop sibling', () => {
 	sheet.show();
 
 	assert.equal(backdrop.listeners.size, 0);
+});
+
+/** What the scrim is reading, or null when the token is absent */
+const backdrop = (dialog) => dialog.props.get('--bs-backdrop-progress') ?? null;
+
+test('snap-to-snap travel leaves the scrim alone until the sheet drops below the shortest snap', () => {
+	const { dialog, header } = makeSheet({ snapPoints: [40, 70], snap: 70 });
+	// The stub measures whatever px height was last written, so start the sheet
+	// well above the 400px shortest snap and give the drag room to resize first.
+	dialog.style.height = '600px';
+
+	// claimOffset eats the opening 10px step, so this resizes to 410px — still
+	// a resize, and a resize is not a dismissal.
+	const move = pointerHold(header, path(200));
+	assert.equal(backdrop(dialog), null, 'shrinking between snaps must not touch the scrim');
+
+	// Past the shortest snap the height pins and the transform takes over. Only
+	// now is the sheet actually leaving the screen.
+	move(260);
+	assert.equal(backdrop(dialog), '0.875', '350px of a 400px rest extent');
+});
+
+test('overscrolling up past the tallest snap never lightens the scrim', () => {
+	const { dialog, header } = makeSheet({ snapPoints: [40, 70], snap: 70 });
+	dialog.style.height = '690px';
+
+	pointerHold(header, [0, -10, -20, -30, -40]);
+
+	assert.equal(backdrop(dialog), null);
+});
+
+test('a binary sheet tracks the scrim across its whole downward drag', () => {
+	// No snaps, so the resting height IS the shortest snap and every pixel of
+	// downward travel is dismissal travel.
+	const { dialog, header } = makeSheet({ snapPoints: [] });
+
+	const move = pointerHold(header, path(50));
+	assert.equal(backdrop(dialog), '0.900', '360px of a 400px rest extent');
+
+	move(150);
+	assert.equal(backdrop(dialog), '0.650');
+});
+
+test('releasing hands the scrim back to CSS', () => {
+	const { dialog, header } = makeSheet({ snapPoints: [40, 70], snap: 40 });
+
+	pointerDrag(header, path(60, 0, 3));
+
+	assert.equal(backdrop(dialog), null, 'the token must not survive the release');
+	assert.equal(
+		dialog.classList.contains('dragging'),
+		false,
+		'the transition has to be re-armed or the scrim cannot ride home'
+	);
+});
+
+test('a close arriving mid-drag clears the scrim before the hiding rule takes over', async () => {
+	const { dialog, panel, header } = makeSheet({ snapPoints: [40, 70], snap: 40 });
+
+	pointerHold(header, path(60));
+	assert.equal(backdrop(dialog), '0.875', 'expected a live dismissal drag');
+
+	// Escape and a backdrop tap both land here, never in hide()
+	panel.hide();
+	await flush();
+
+	assert.equal(backdrop(dialog), null);
+	assert.equal(dialog.classList.contains('dragging'), false);
+});
+
+test('a refused close mid-drag restores the scrim with the rest of the gesture', () => {
+	const { sheet, dialog, header } = makeSheet({
+		snapPoints: [40, 70],
+		snap: 40,
+		accepts: false,
+	});
+
+	pointerHold(header, path(60));
+	assert.equal(backdrop(dialog), '0.875');
+
+	assert.equal(sheet.hide(), false);
+
+	assert.equal(backdrop(dialog), null, 'a sheet that is staying gets its scrim back');
+	assert.equal(dialog.classList.contains('dragging'), false);
+});
+
+test('reopening after a drag-dismiss fades the scrim in from nothing', () => {
+	const { sheet, dialog, panel, header } = makeSheet({ snapPoints: [] });
+
+	pointerHold(header, path(150));
+	assert.notEqual(backdrop(dialog), null);
+
+	sheet.hide();
+	panel.state = 'hidden';
+	sheet.show();
+
+	assert.equal(backdrop(dialog), null, 'the dismissing drag must not seed the reopen');
+	assert.equal(dialog.classList.contains('dragging'), false);
 });

@@ -1843,6 +1843,20 @@ sheet.hide();</pre>
 						<div><code>5px</code></div>
 						<div>Backdrop blur radius.</div>
 					</div>
+					<div class="ref-row">
+						<div><code>--bs-backdrop-progress</code></div>
+						<div><code>1</code> → <code>0</code></div>
+						<div>
+							<strong>Written by the component — do not set it.</strong> How much of the sheet is
+							still on screen, published on the <code>&lt;dialog&gt;</code> so the
+							<code>::backdrop</code> and anything inside the sheet can read it. It tracks the
+							<em>dismissal</em>, not the drag: with <code>snap-points</code> it holds at
+							<code>1</code> through every snap-to-snap resize and only falls once the sheet drops
+							below the shortest snap and starts leaving the viewport. Upward overscroll never
+							lightens it. Absent whenever it would be <code>1</code>, so always read it as
+							<code>var(--bs-backdrop-progress, 1)</code>.
+						</div>
+					</div>
 				</div>
 
 				<h3 class="ref-heading">Methods &amp; Properties</h3>
