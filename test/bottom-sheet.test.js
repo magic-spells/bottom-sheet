@@ -122,7 +122,7 @@ function makeDialog(restingHeight = 400) {
 		},
 		// Custom properties live in their own bag rather than on `style` itself,
 		// so `style.height` stays a plain string the way the rest of the suite
-		// reads it. `props` is what the backdrop assertions inspect.
+		// reads it.
 		props,
 		style: {
 			setProperty: (name, value) => props.set(name, value),
@@ -145,11 +145,21 @@ function makeDialog(restingHeight = 400) {
  * close that arrives while the sheet is still opening
  */
 function makePanel({ accepts = true } = {}) {
+	const props = new Map();
 	return Object.assign(new EventTarget(), {
 		hideCalls: 0,
 		isOpen: true,
 		state: 'shown',
 		backdrop: null,
+		// The scrim token is written here — the lowest common ancestor of the
+		// <dialog-backdrop> overlay and the sheet's own subtree, both of which
+		// read it. `props` is what the scrim assertions inspect.
+		props,
+		style: {
+			setProperty: (name, value) => props.set(name, value),
+			removeProperty: (name) => props.delete(name),
+			getPropertyValue: (name) => props.get(name) ?? '',
+		},
 		hide() {
 			this.hideCalls++;
 			// `beforeHide` is cancelable and the state only moves if it survives,
@@ -195,24 +205,44 @@ function makeSurface() {
 	};
 }
 
+/**
+ * The <dialog-backdrop> sibling that now paints the overlay. It inherits the
+ * scrim token from the panel rather than carrying it, so this only has to be a
+ * surface — the listener map is what the "no gesture is bound here" assertion
+ * inspects.
+ */
+function makeBackdrop() {
+	const props = new Map();
+	return Object.assign(makeSurface(), {
+		props,
+		style: {
+			setProperty: (name, value) => props.set(name, value),
+			removeProperty: (name) => props.delete(name),
+			getPropertyValue: (name) => props.get(name) ?? '',
+		},
+	});
+}
+
 function makeSheet({ snapPoints = [40, 70], snap = null, accepts = true } = {}) {
 	resetFrames();
 
 	const dialog = makeDialog();
 	const panel = makePanel({ accepts });
 	const header = makeSurface();
+	const backdrop = makeBackdrop();
 	const sheet = new BottomSheet();
 	connectedSheets.add(sheet);
 
 	sheet.closestDialog = dialog;
 	sheet.closestPanel = panel;
 	sheet.children['bottom-sheet-header'] = header;
+	panel.backdrop = backdrop;
 
 	if (snapPoints.length) sheet.snapPoints = snapPoints;
 	if (snap !== null) sheet.snap = snap;
 	sheet.connectedCallback();
 
-	return { sheet, dialog, panel, header };
+	return { sheet, dialog, panel, header, backdrop };
 }
 
 /**
@@ -578,22 +608,24 @@ test('a parent-driven close mid-drag releases the gesture and clears its transfo
 	assert.equal(dialog.style.transform, '', 'the abandoned pointer must be inert');
 });
 
-test('beforeShow does not bind a gesture to the inert backdrop sibling', () => {
-	const backdrop = makeSurface();
-	const { sheet, panel } = makeSheet({ snapPoints: [] });
+test('beforeShow does not bind a gesture to the backdrop sibling', () => {
+	const { sheet, backdrop } = makeSheet({ snapPoints: [] });
 
-	panel.backdrop = backdrop;
 	assert.equal(sheet.backdrop, backdrop);
 	sheet.show();
 
 	assert.equal(backdrop.listeners.size, 0);
 });
 
-/** What the scrim is reading, or null when the token is absent */
-const backdrop = (dialog) => dialog.props.get('--bs-backdrop-progress') ?? null;
+/**
+ * What the scrim is reading, or null when the token is absent. Read from the
+ * overlay element, which is a SIBLING of the dialog — it never inherited the
+ * token, so the component writes it there directly.
+ */
+const scrim = (panel) => panel.props.get('--bs-backdrop-progress') ?? null;
 
 test('snap-to-snap travel leaves the scrim alone until the sheet drops below the shortest snap', () => {
-	const { dialog, header } = makeSheet({ snapPoints: [40, 70], snap: 70 });
+	const { dialog, header, panel } = makeSheet({ snapPoints: [40, 70], snap: 70 });
 	// The stub measures whatever px height was last written, so start the sheet
 	// well above the 400px shortest snap and give the drag room to resize first.
 	dialog.style.height = '600px';
@@ -601,41 +633,41 @@ test('snap-to-snap travel leaves the scrim alone until the sheet drops below the
 	// claimOffset eats the opening 10px step, so this resizes to 410px — still
 	// a resize, and a resize is not a dismissal.
 	const move = pointerHold(header, path(200));
-	assert.equal(backdrop(dialog), null, 'shrinking between snaps must not touch the scrim');
+	assert.equal(scrim(panel), null, 'shrinking between snaps must not touch the scrim');
 
 	// Past the shortest snap the height pins and the transform takes over. Only
 	// now is the sheet actually leaving the screen.
 	move(260);
-	assert.equal(backdrop(dialog), '0.875', '350px of a 400px rest extent');
+	assert.equal(scrim(panel), '0.875', '350px of a 400px rest extent');
 });
 
 test('overscrolling up past the tallest snap never lightens the scrim', () => {
-	const { dialog, header } = makeSheet({ snapPoints: [40, 70], snap: 70 });
+	const { dialog, header, panel } = makeSheet({ snapPoints: [40, 70], snap: 70 });
 	dialog.style.height = '690px';
 
 	pointerHold(header, [0, -10, -20, -30, -40]);
 
-	assert.equal(backdrop(dialog), null);
+	assert.equal(scrim(panel), null);
 });
 
 test('a binary sheet tracks the scrim across its whole downward drag', () => {
 	// No snaps, so the resting height IS the shortest snap and every pixel of
 	// downward travel is dismissal travel.
-	const { dialog, header } = makeSheet({ snapPoints: [] });
+	const { dialog, header, panel } = makeSheet({ snapPoints: [] });
 
 	const move = pointerHold(header, path(50));
-	assert.equal(backdrop(dialog), '0.900', '360px of a 400px rest extent');
+	assert.equal(scrim(panel), '0.900', '360px of a 400px rest extent');
 
 	move(150);
-	assert.equal(backdrop(dialog), '0.650');
+	assert.equal(scrim(panel), '0.650');
 });
 
 test('releasing hands the scrim back to CSS', () => {
-	const { dialog, header } = makeSheet({ snapPoints: [40, 70], snap: 40 });
+	const { dialog, header, panel } = makeSheet({ snapPoints: [40, 70], snap: 40 });
 
 	pointerDrag(header, path(60, 0, 3));
 
-	assert.equal(backdrop(dialog), null, 'the token must not survive the release');
+	assert.equal(scrim(panel), null, 'the token must not survive the release');
 	assert.equal(
 		dialog.classList.contains('dragging'),
 		false,
@@ -647,29 +679,29 @@ test('a close arriving mid-drag clears the scrim before the hiding rule takes ov
 	const { dialog, panel, header } = makeSheet({ snapPoints: [40, 70], snap: 40 });
 
 	pointerHold(header, path(60));
-	assert.equal(backdrop(dialog), '0.875', 'expected a live dismissal drag');
+	assert.equal(scrim(panel), '0.875', 'expected a live dismissal drag');
 
 	// Escape and a backdrop tap both land here, never in hide()
 	panel.hide();
 	await flush();
 
-	assert.equal(backdrop(dialog), null);
+	assert.equal(scrim(panel), null);
 	assert.equal(dialog.classList.contains('dragging'), false);
 });
 
 test('a refused close mid-drag restores the scrim with the rest of the gesture', () => {
-	const { sheet, dialog, header } = makeSheet({
+	const { sheet, dialog, header, panel } = makeSheet({
 		snapPoints: [40, 70],
 		snap: 40,
 		accepts: false,
 	});
 
 	pointerHold(header, path(60));
-	assert.equal(backdrop(dialog), '0.875');
+	assert.equal(scrim(panel), '0.875');
 
 	assert.equal(sheet.hide(), false);
 
-	assert.equal(backdrop(dialog), null, 'a sheet that is staying gets its scrim back');
+	assert.equal(scrim(panel), null, 'a sheet that is staying gets its scrim back');
 	assert.equal(dialog.classList.contains('dragging'), false);
 });
 
@@ -677,12 +709,12 @@ test('reopening after a drag-dismiss fades the scrim in from nothing', () => {
 	const { sheet, dialog, panel, header } = makeSheet({ snapPoints: [] });
 
 	pointerHold(header, path(150));
-	assert.notEqual(backdrop(dialog), null);
+	assert.notEqual(scrim(panel), null);
 
 	sheet.hide();
 	panel.state = 'hidden';
 	sheet.show();
 
-	assert.equal(backdrop(dialog), null, 'the dismissing drag must not seed the reopen');
+	assert.equal(scrim(panel), null, 'the dismissing drag must not seed the reopen');
 	assert.equal(dialog.classList.contains('dragging'), false);
 });

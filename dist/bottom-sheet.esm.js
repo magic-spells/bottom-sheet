@@ -737,7 +737,7 @@ var BottomSheet = class extends HTMLElement {
 		_.#scrollVeto = null;
 		_.#drag = { active: false };
 		_.#backdropProgress = null;
-		_.#dialogRef?.style.removeProperty("--bs-backdrop-progress");
+		_.#panelRef?.style.removeProperty("--bs-backdrop-progress");
 		_.#dialogRef?.classList.remove("dragging");
 		_.#stopSpring();
 		_.#engine?.removeAllListeners();
@@ -762,14 +762,19 @@ var BottomSheet = class extends HTMLElement {
 	}
 	/**
 	* Publishes how much of the sheet is still on screen as
-	* `--bs-backdrop-progress`, which the scrim reads for its opacity.
+	* `--bs-backdrop-progress`, which the overlay reads for its opacity.
 	*
-	* Written on the dialog and reaching `::backdrop` by inheritance. The
-	* saturated case deliberately REMOVES the token rather than writing `1`: an
-	* absent token and the CSS fallback say the same thing, and a custom property
-	* is inherited, so every write invalidates the dialog's whole subtree — which
-	* is the consumer's scrolling list. Skipping it keeps snap-to-snap travel,
-	* upward overscroll, and rest entirely off that path.
+	* Written on the `<dialog-panel>`, which is the lowest common ancestor of the
+	* two things that read it: the `<dialog-backdrop>` overlay and the sheet's own
+	* subtree. The overlay is a SIBLING of the dialog, so a dialog-level write
+	* never reaches it, and the documented contract — that anything inside the
+	* sheet can read the token — has to keep working. One write satisfies both.
+	*
+	* The saturated case deliberately REMOVES the token rather than writing `1`:
+	* an absent token and the CSS fallback say the same thing, and a custom
+	* property invalidates the subtree it lands on — which includes the
+	* consumer's scrolling list. Skipping it keeps snap-to-snap travel, upward
+	* overscroll, and rest entirely off that path.
 	*
 	* Only a live drag calls this. A spring settle never needs to: the engine
 	* only runs when there is height left to travel, and height travel only
@@ -780,18 +785,18 @@ var BottomSheet = class extends HTMLElement {
 	*/
 	#syncBackdrop(progress) {
 		const _ = this;
-		const dialog = _.dialog;
-		if (!dialog) return;
+		const panel = _.#panelRef;
+		if (!panel) return;
 		if (progress === null || !(progress < 1)) {
 			if (_.#backdropProgress === null) return;
 			_.#backdropProgress = null;
-			dialog.style.removeProperty("--bs-backdrop-progress");
+			panel.style.removeProperty("--bs-backdrop-progress");
 			return;
 		}
 		const value = Math.max(0, progress).toFixed(3);
 		if (value === _.#backdropProgress) return;
 		_.#backdropProgress = value;
-		dialog.style.setProperty("--bs-backdrop-progress", value);
+		panel.style.setProperty("--bs-backdrop-progress", value);
 	}
 	/**
 	* Resolves the declared snaps to pixels against the current viewport

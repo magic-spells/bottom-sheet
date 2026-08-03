@@ -222,7 +222,7 @@ that number so you can drive your own effects from it.
 
 | Property | Range | Description |
 | --- | --- | --- |
-| `--bs-backdrop-progress` | `1` → `0` | **Written by the component; do not set it.** How much of the sheet is still on screen. Set on the `<dialog>`, so it is readable from the `::backdrop` and from anything inside the sheet |
+| `--bs-backdrop-progress` | `1` → `0` | **Written by the component; do not set it.** How much of the sheet is still on screen. Set on the `<dialog-panel>`, so it is readable from the `<dialog-backdrop>` overlay and from anything inside the sheet |
 
 It tracks the **dismissal**, not the drag. On a sheet with `snap-points` it stays
 at `1` for all snap-to-snap travel — shrinking from `90` to `40` is a resize, not
@@ -243,9 +243,9 @@ dialog-panel:has(bottom-sheet) > dialog bottom-sheet-content {
 }
 ```
 
-Where a browser does not yet inherit custom properties into `::backdrop`, the
-token never reaches the overlay, the fallback resolves, and the scrim simply
-fades on its own clock the way it always has.
+The overlay itself is painted on `<dialog-backdrop>` — the one overlay surface
+across the whole component family, shared with `dialog-panel` and `sheet`. Style
+it there and nowhere else; `dialog::backdrop` is kept transparent on every panel.
 
 ```css
 :root {

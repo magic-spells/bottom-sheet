@@ -72,11 +72,12 @@
 			}
 
 			/* ------------------------------------------------
-			   Frosted-glass scrim (demo-only — matches the
-			   dialog-panel demo; consumers can layer the same
-			   noise + saturate onto the ::backdrop scrim)
+			   Frosted-glass overlay (demo-only — matches the
+			   dialog-panel demo; consumers layer the same noise
+			   + saturate onto <dialog-backdrop>, which is the
+			   one overlay surface across the whole family)
 			------------------------------------------------ */
-			dialog-panel:has(bottom-sheet) > dialog::backdrop {
+			dialog-panel:has(bottom-sheet) > dialog-backdrop {
 				backdrop-filter: blur(var(--bs-overlay-blur)) saturate(115%);
 				-webkit-backdrop-filter: blur(var(--bs-overlay-blur)) saturate(115%);
 				background-image: url('./bg-noise.png');

@@ -66,7 +66,6 @@ class BottomSheet extends HTMLElement {
 	// cached references for reliable cleanup in disconnectedCallback
 	#panelRef = null;
 	#dialogRef = null;
-	#backdropRef = null;
 
 	/**
 	 * Define which attributes should be observed for changes
@@ -501,10 +500,6 @@ class BottomSheet extends HTMLElement {
 		// Cache references so disconnectedCallback can reliably unbind
 		_.#panelRef = _.panel;
 		_.#dialogRef = _.dialog;
-		// dialog-panel creates the overlay in its own connectedCallback, and it is
-		// the ancestor, so it has always upgraded by the time this runs. Resolved
-		// lazily anyway in #syncBackdrop, for a sheet moved into a panel later.
-		_.#backdropRef = _.backdrop;
 
 		window.addEventListener('resize', _.#handlers.windowResize);
 
@@ -556,10 +551,10 @@ class BottomSheet extends HTMLElement {
 		}
 		_.#scrollVeto = null;
 		_.#drag = { active: false };
-		// The memo is keyed to an overlay this element can no longer reach, so a
+		// The memo is keyed to a panel this element can no longer reach, so a
 		// reconnect must not read it back as "already written".
 		_.#backdropProgress = null;
-		_.#backdropRef?.style.removeProperty('--bs-backdrop-progress');
+		_.#panelRef?.style.removeProperty('--bs-backdrop-progress');
 		_.#dialogRef?.classList.remove('dragging');
 		// Leaves no rAF loop running against a detached dialog
 		_.#stopSpring();
@@ -575,7 +570,6 @@ class BottomSheet extends HTMLElement {
 
 		_.#panelRef = null;
 		_.#dialogRef = null;
-		_.#backdropRef = null;
 	}
 
 	/**
@@ -599,15 +593,17 @@ class BottomSheet extends HTMLElement {
 	 * Publishes how much of the sheet is still on screen as
 	 * `--bs-backdrop-progress`, which the overlay reads for its opacity.
 	 *
-	 * Written directly on the `<dialog-backdrop>` element that consumes it.
-	 * Inheritance is not an option here — the overlay is a SIBLING of the dialog,
-	 * not a descendant — and writing it at the element is also strictly cheaper
-	 * than the old dialog-level write: a custom property invalidates the subtree
-	 * it lands on, and this one has no children, so the consumer's scrolling list
-	 * is off that path entirely rather than merely skipped at saturation.
+	 * Written on the `<dialog-panel>`, which is the lowest common ancestor of the
+	 * two things that read it: the `<dialog-backdrop>` overlay and the sheet's own
+	 * subtree. The overlay is a SIBLING of the dialog, so a dialog-level write
+	 * never reaches it, and the documented contract — that anything inside the
+	 * sheet can read the token — has to keep working. One write satisfies both.
 	 *
-	 * The saturated case still REMOVES the token rather than writing `1`: an
-	 * absent token and the CSS fallback say the same thing.
+	 * The saturated case deliberately REMOVES the token rather than writing `1`:
+	 * an absent token and the CSS fallback say the same thing, and a custom
+	 * property invalidates the subtree it lands on — which includes the
+	 * consumer's scrolling list. Skipping it keeps snap-to-snap travel, upward
+	 * overscroll, and rest entirely off that path.
 	 *
 	 * Only a live drag calls this. A spring settle never needs to: the engine
 	 * only runs when there is height left to travel, and height travel only
@@ -618,20 +614,20 @@ class BottomSheet extends HTMLElement {
 	 */
 	#syncBackdrop(progress) {
 		const _ = this;
-		const backdrop = (_.#backdropRef ||= _.backdrop);
-		if (!backdrop) return;
+		const panel = _.#panelRef;
+		if (!panel) return;
 
 		if (progress === null || !(progress < 1)) {
 			if (_.#backdropProgress === null) return;
 			_.#backdropProgress = null;
-			backdrop.style.removeProperty('--bs-backdrop-progress');
+			panel.style.removeProperty('--bs-backdrop-progress');
 			return;
 		}
 
 		const value = Math.max(0, progress).toFixed(3);
 		if (value === _.#backdropProgress) return;
 		_.#backdropProgress = value;
-		backdrop.style.setProperty('--bs-backdrop-progress', value);
+		panel.style.setProperty('--bs-backdrop-progress', value);
 	}
 
 	/**

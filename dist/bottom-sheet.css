@@ -118,28 +118,26 @@ dialog-panel:has(bottom-sheet[inset]) bottom-sheet-footer {
 }
 
 dialog-panel:has(bottom-sheet) > dialog-backdrop {
-  display: none;
-}
-
-dialog-panel:has(bottom-sheet) > dialog::backdrop {
   background: var(--bs-overlay-background);
   -webkit-backdrop-filter: blur(var(--bs-overlay-blur));
   backdrop-filter: blur(var(--bs-overlay-blur));
   opacity: 0;
 }
 
-dialog-panel[state="shown"]:has(bottom-sheet) > dialog::backdrop {
+dialog-panel[state="shown"]:has(bottom-sheet) > dialog-backdrop {
   opacity: var(--bs-backdrop-progress, 1);
   transition: opacity var(--bs-transition-duration) var(--bs-transition-timing);
+  pointer-events: auto;
 }
 
-dialog-panel[state="shown"]:has(bottom-sheet) > dialog.dragging::backdrop {
+dialog-panel[state="shown"]:has(bottom-sheet):has( > dialog.dragging) > dialog-backdrop {
   transition: none;
 }
 
-dialog-panel[state="hiding"]:has(bottom-sheet) > dialog::backdrop {
+dialog-panel[state="hiding"]:has(bottom-sheet) > dialog-backdrop {
   opacity: 0;
   transition: opacity var(--bs-transition-duration) var(--bs-transition-timing);
+  pointer-events: none;
 }
 
 bottom-sheet {
